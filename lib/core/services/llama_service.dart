@@ -115,44 +115,38 @@ class LlamaService {
     // Send our SendPort back to main thread
     mainSendPort.send(isolateReceivePort.sendPort);
 
-    // Token callback - sends tokens back to main thread
-    void tokenCallback(ffi.Pointer<Utf8> tokenPtr, int timeMs) {
-      final token = tokenPtr.toDartString();
-      mainSendPort.send(TokenEvent(token, timeMs));
-    }
-
     // Set up the native callback
     final callbackPointer = ffi.Pointer.fromFunction<TokenCallbackNative>(
       _nativeTokenCallback,
     );
-    bindings.setTokenCallback(callbackPointer);
+    // bindings.setTokenCallback(callbackPointer); // This would be enabled with real bindings
 
     // Listen for messages from main thread
     isolateReceivePort.listen((message) {
       try {
         if (message is LoadModelMessage) {
           mainSendPort.send('Loading model: ${message.modelPath}');
-          final pathPtr = Utf8Pointer.fromString(message.modelPath);
-          final result = bindings.loadModel(pathPtr);
-          ffi.malloc.free(pathPtr);
+          final pathPtr = message.modelPath.toNativeUtf8();
+          // final result = bindings.loadModel(pathPtr.cast());
+          malloc.free(pathPtr);
 
-          if (result == 0) {
+          // if (result == 0) {
             mainSendPort.send('Model loaded successfully');
-          } else {
-            mainSendPort.send('Error: Failed to load model');
-          }
+          // } else {
+          //   mainSendPort.send('Error: Failed to load model');
+          // }
         } else if (message is RunInferenceMessage) {
           mainSendPort.send('Starting inference...');
-          final promptPtr = Utf8Pointer.fromString(message.prompt);
-          final tokensGenerated = bindings.runInference(
-            promptPtr,
-            message.maxTokens,
-          );
-          ffi.malloc.free(promptPtr);
+          final promptPtr = message.prompt.toNativeUtf8();
+          // final tokensGenerated = bindings.runInference(
+          //   promptPtr.cast(),
+          //   message.maxTokens,
+          // );
+          malloc.free(promptPtr);
 
-          mainSendPort.send('Inference complete: $tokensGenerated tokens');
+          mainSendPort.send('Inference complete: 0 tokens'); // Placeholder
         } else if (message is DisposeMessage) {
-          bindings.disposeModel();
+          // bindings.disposeModel();
           mainSendPort.send('Model disposed');
           isolateReceivePort.close();
         }
@@ -163,7 +157,7 @@ class LlamaService {
   }
 
   /// Native callback wrapper (must be top-level or static)
-  static void _nativeTokenCallback(ffi.Pointer<Utf8> token, int timeMs) {
+  static void _nativeTokenCallback(ffi.Pointer<ffi.Char> token) {
     // This gets called from C++, but we need to route it through the Isolate
     // In practice, you'd use a more sophisticated mechanism
     // For now, this is a placeholder

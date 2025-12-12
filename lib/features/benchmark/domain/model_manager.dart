@@ -16,9 +16,9 @@ class ModelManager {
   /// Check if device has internet connectivity
   Future<bool> hasConnectivity() async {
     final result = await _connectivity.checkConnectivity();
-    return result.contains(ConnectivityResult.mobile) ||
-           result.contains(ConnectivityResult.wifi) ||
-           result.contains(ConnectivityResult.ethernet);
+    return result == ConnectivityResult.mobile ||
+           result == ConnectivityResult.wifi ||
+           result == ConnectivityResult.ethernet;
   }
 
   /// Select the appropriate model strategy based on connectivity

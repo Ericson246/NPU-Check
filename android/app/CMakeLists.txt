@@ -48,4 +48,6 @@ target_link_libraries(neural_gauge_native
 # Enable NEON on ARM
 if(ANDROID_ABI STREQUAL "arm64-v8a")
     target_compile_options(neural_gauge_native PRIVATE -mfpu=neon)
+elseif(ANDROID_ABI STREQUAL "armeabi-v7a")
+    target_compile_options(neural_gauge_native PRIVATE -mfpu=neon -mfloat-abi=softfp)
 endif()

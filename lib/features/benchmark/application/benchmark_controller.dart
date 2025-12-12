@@ -28,6 +28,10 @@ class BenchmarkController extends _$BenchmarkController {
     _llamaService.tokenStream.listen(_onTokenReceived);
     _llamaService.statusStream.listen(_onStatusUpdate);
     
+    ref.onDispose(() {
+      _llamaService.dispose();
+    });
+
     return const BenchmarkState();
   }
 
@@ -174,12 +178,6 @@ class BenchmarkController extends _$BenchmarkController {
   Future<void> stopBenchmark() async {
     await _llamaService.dispose();
     state = state.copyWith(status: BenchmarkStatus.idle);
-  }
-
-  @override
-  void dispose() {
-    _llamaService.dispose();
-    super.dispose();
   }
 }
 
