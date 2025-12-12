@@ -138,19 +138,46 @@ class BenchmarkController extends _$BenchmarkController {
 
   /// Handle incoming tokens
   void _onTokenReceived(TokenEvent event) {
-    // The event.token contains all generated text
-    // We need to estimate token count or get it from the event
-    // For now, estimate based on words (rough approximation)
-    final words = event.token.trim().split(RegExp(r'\s+'));
+    print('DEBUG: _onTokenReceived called with token length: ${event.token.length}');
+    print('DEBUG: Raw token (first 100 chars): ${event.token.substring(0, event.token.length > 100 ? 100 : event.token.length)}');
+    
+    // The event.token contains all generated text with special tokenizer characters
+    // Clean up various special characters used by tokenizers
+    String cleanedText = event.token;
+    
+    // Replace common tokenizer special characters
+    cleanedText = cleanedText.replaceAll(RegExp(r'Ġ'), ' ');  // BPE space token
+    cleanedText = cleanedText.replaceAll(RegExp(r'Ċ'), '\n'); // BPE newline token
+    cleanedText = cleanedText.replaceAll(RegExp(r'ĉ'), '\t');  // BPE tab token
+    cleanedText = cleanedText.trim();
+    
+    // If cleaned text is empty, use original
+    if (cleanedText.isEmpty) {
+      cleanedText = event.token;
+    }
+    
+    // Estimate token count based on words (rough approximation)
+    final words = cleanedText.split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
     _tokensGenerated = words.length;
     
-    // Update generated text
-    state = state.copyWith(generatedText: event.token);
+    // If word count is too low, estimate from character count
+    if (_tokensGenerated < 5 && cleanedText.length > 20) {
+      _tokensGenerated = (cleanedText.length / 4).round(); // Rough estimate: ~4 chars per token
+    }
+    
+    print('DEBUG: Cleaned text: $cleanedText');
+    print('DEBUG: Estimated tokens: $_tokensGenerated');
+    
+    // Update generated text with cleaned version
+    state = state.copyWith(generatedText: cleanedText);
 
     // Calculate speed
     if (_startTime != null) {
       final elapsed = DateTime.now().difference(_startTime!);
       final tokensPerSecond = _tokensGenerated / elapsed.inMilliseconds * 1000;
+      print('DEBUG: Elapsed: ${elapsed.inMilliseconds}ms, Speed: $tokensPerSecond T/s');
       state = state.copyWith(currentSpeed: tokensPerSecond);
     }
 
