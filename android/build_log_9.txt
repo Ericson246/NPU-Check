@@ -1,0 +1,192 @@
+> Task :gradle:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle:compileKotlin UP-TO-DATE
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy NO-SOURCE
+> Task :gradle:pluginDescriptors UP-TO-DATE
+> Task :gradle:processResources UP-TO-DATE
+> Task :gradle:classes UP-TO-DATE
+> Task :gradle:jar UP-TO-DATE
+> Task :app:DebugMinSdkCheck
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:compileFlutterBuildDebug
+> Task :app:packJniLibsflutterBuildDebug
+> Task :connectivity_plus:preBuild UP-TO-DATE
+> Task :connectivity_plus:preDebugBuild UP-TO-DATE
+> Task :connectivity_plus:writeDebugAarMetadata UP-TO-DATE
+> Task :device_info_plus:preBuild UP-TO-DATE
+> Task :device_info_plus:preDebugBuild UP-TO-DATE
+> Task :device_info_plus:writeDebugAarMetadata UP-TO-DATE
+> Task :path_provider_android:preBuild UP-TO-DATE
+> Task :path_provider_android:preDebugBuild UP-TO-DATE
+> Task :path_provider_android:writeDebugAarMetadata UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:cleanMergeDebugAssets
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :connectivity_plus:mergeDebugShaders UP-TO-DATE
+> Task :connectivity_plus:compileDebugShaders NO-SOURCE
+> Task :connectivity_plus:generateDebugAssets UP-TO-DATE
+> Task :connectivity_plus:mergeDebugAssets UP-TO-DATE
+> Task :device_info_plus:mergeDebugShaders UP-TO-DATE
+> Task :device_info_plus:compileDebugShaders NO-SOURCE
+> Task :device_info_plus:generateDebugAssets UP-TO-DATE
+> Task :device_info_plus:mergeDebugAssets UP-TO-DATE
+> Task :path_provider_android:mergeDebugShaders UP-TO-DATE
+> Task :path_provider_android:compileDebugShaders NO-SOURCE
+> Task :path_provider_android:generateDebugAssets UP-TO-DATE
+> Task :path_provider_android:mergeDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:copyFlutterAssetsDebug
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :connectivity_plus:generateDebugResValues UP-TO-DATE
+> Task :connectivity_plus:generateDebugResources UP-TO-DATE
+> Task :connectivity_plus:packageDebugResources UP-TO-DATE
+> Task :device_info_plus:generateDebugResValues UP-TO-DATE
+> Task :device_info_plus:generateDebugResources UP-TO-DATE
+> Task :device_info_plus:packageDebugResources UP-TO-DATE
+> Task :path_provider_android:generateDebugResValues UP-TO-DATE
+> Task :path_provider_android:generateDebugResources UP-TO-DATE
+> Task :path_provider_android:packageDebugResources UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :connectivity_plus:extractDeepLinksDebug UP-TO-DATE
+> Task :connectivity_plus:processDebugManifest UP-TO-DATE
+> Task :device_info_plus:extractDeepLinksDebug UP-TO-DATE
+> Task :device_info_plus:processDebugManifest UP-TO-DATE
+> Task :path_provider_android:extractDeepLinksDebug UP-TO-DATE
+> Task :path_provider_android:processDebugManifest UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:outputDebugAppLinkSettings UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :connectivity_plus:compileDebugLibraryResources UP-TO-DATE
+> Task :connectivity_plus:parseDebugLocalResources UP-TO-DATE
+> Task :connectivity_plus:generateDebugRFile UP-TO-DATE
+> Task :device_info_plus:compileDebugLibraryResources UP-TO-DATE
+> Task :device_info_plus:parseDebugLocalResources UP-TO-DATE
+> Task :device_info_plus:generateDebugRFile UP-TO-DATE
+> Task :path_provider_android:compileDebugLibraryResources UP-TO-DATE
+> Task :path_provider_android:parseDebugLocalResources UP-TO-DATE
+> Task :path_provider_android:generateDebugRFile UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :connectivity_plus:javaPreCompileDebug UP-TO-DATE
+> Task :connectivity_plus:compileDebugJavaWithJavac UP-TO-DATE
+> Task :connectivity_plus:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :device_info_plus:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :device_info_plus:compileDebugKotlin UP-TO-DATE
+> Task :device_info_plus:javaPreCompileDebug UP-TO-DATE
+> Task :device_info_plus:compileDebugJavaWithJavac NO-SOURCE
+> Task :device_info_plus:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :path_provider_android:javaPreCompileDebug UP-TO-DATE
+> Task :path_provider_android:compileDebugJavaWithJavac UP-TO-DATE
+> Task :path_provider_android:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :connectivity_plus:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :device_info_plus:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :path_provider_android:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :connectivity_plus:processDebugJavaRes NO-SOURCE
+> Task :device_info_plus:processDebugJavaRes UP-TO-DATE
+> Task :path_provider_android:processDebugJavaRes NO-SOURCE
+> Task :connectivity_plus:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :device_info_plus:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :path_provider_android:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses
+> Task :app:configureCMakeDebug[arm64-v8a]
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:compileDebugKotlin
+> Task :app:buildCMakeDebug[arm64-v8a]
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:dexBuilderDebug UP-TO-DATE
+> Task :app:mergeDebugGlobalSynthetics UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeProjectDexDebug UP-TO-DATE
+> Task :app:configureCMakeDebug[armeabi-v7a]
+> Task :app:mergeDebugJavaResource
+> Task :app:compressDebugAssets
+
+> Task :app:buildCMakeDebug[armeabi-v7a]
+C/C++: ninja: Entering directory `C:\Users\ericg\Desktop\npu\NPU-Check\build\.cxx\debug\1n4p4mc4\armeabi-v7a'
+C/C++: C:\Users\ericg\AppData\Local\Android\Sdk\ndk\28.2.13676358\toolchains\llvm\prebuilt\windows-x86_64\bin\clang++.exe --target=armv7-none-linux-androideabi24 --sysroot=C:/Users/ericg/AppData/Local/Android/Sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/windows-x86_64/sysroot -DGGML_BACKEND_BUILD -DGGML_BACKEND_SHARED -DGGML_SCHED_MAX_COPIES=4 -DGGML_SHARED -DGGML_USE_CPU_REPACK -DGGML_USE_LLAMAFILE -DGGML_USE_OPENMP -D_GNU_SOURCE -D_XOPEN_SOURCE=600 -Dggml_cpu_EXPORTS -IC:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/.. -IC:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/. -IC:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/ggml-cpu -IC:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/../include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -Wmissing-declarations -Wmissing-noreturn -Wall -Wextra -Wpedantic -Wcast-qual -Wno-unused-function -Wunreachable-code-break -Wunreachable-code-return -Wmissing-prototypes -Wextra-semi -fopenmp=libomp -std=gnu++17 -MD -MT src/main/cpp/llama.cpp/ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/llamafile/sgemm.cpp.o -MF src\main\cpp\llama.cpp\ggml\src\CMakeFiles\ggml-cpu.dir\ggml-cpu\llamafile\sgemm.cpp.o.d -o src/main/cpp/llama.cpp/ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/llamafile/sgemm.cpp.o -c C:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp
+C/C++: C:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:242:12: error: use of undeclared identifier 'vld1q_f16'
+C/C++:   242 |     return vld1q_f16((const float16_t *)p);
+C/C++:       |            ^
+C/C++: C:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:245:25: error: use of undeclared identifier 'vld1_f16'
+C/C++:   245 |     return vcvt_f32_f16(vld1_f16((const float16_t *)p));
+C/C++:       |                         ^
+C/C++: 2 errors generated.
+
+> Task :app:buildCMakeDebug[armeabi-v7a] FAILED
+
+[Incubating] Problems report is available at: file:///C:/Users/ericg/Desktop/npu/NPU-Check/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:buildCMakeDebug[armeabi-v7a]'.
+> com.android.ide.common.process.ProcessException: ninja: Entering directory `C:\Users\ericg\Desktop\npu\NPU-Check\build\.cxx\debug\1n4p4mc4\armeabi-v7a'
+  [1/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-cparams.cpp.o
+  [2/128] Linking CXX shared library bin\libggml-base.so
+  [3/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-hparams.cpp.o
+  [4/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-io.cpp.o
+  [5/128] Building CXX object src/main/cpp/llama.cpp/ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/llamafile/sgemm.cpp.o
+  FAILED: src/main/cpp/llama.cpp/ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/llamafile/sgemm.cpp.o 
+  C:\Users\ericg\AppData\Local\Android\Sdk\ndk\28.2.13676358\toolchains\llvm\prebuilt\windows-x86_64\bin\clang++.exe --target=armv7-none-linux-androideabi24 --sysroot=C:/Users/ericg/AppData/Local/Android/Sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/windows-x86_64/sysroot -DGGML_BACKEND_BUILD -DGGML_BACKEND_SHARED -DGGML_SCHED_MAX_COPIES=4 -DGGML_SHARED -DGGML_USE_CPU_REPACK -DGGML_USE_LLAMAFILE -DGGML_USE_OPENMP -D_GNU_SOURCE -D_XOPEN_SOURCE=600 -Dggml_cpu_EXPORTS -IC:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/.. -IC:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/. -IC:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/ggml-cpu -IC:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/../include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -Wmissing-declarations -Wmissing-noreturn -Wall -Wextra -Wpedantic -Wcast-qual -Wno-unused-function -Wunreachable-code-break -Wunreachable-code-return -Wmissing-prototypes -Wextra-semi -fopenmp=libomp -std=gnu++17 -MD -MT src/main/cpp/llama.cpp/ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/llamafile/sgemm.cpp.o -MF src\main\cpp\llama.cpp\ggml\src\CMakeFiles\ggml-cpu.dir\ggml-cpu\llamafile\sgemm.cpp.o.d -o src/main/cpp/llama.cpp/ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/llamafile/sgemm.cpp.o -c C:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp
+  C:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:242:12: error: use of undeclared identifier 'vld1q_f16'
+    242 |     return vld1q_f16((const float16_t *)p);
+        |            ^
+  C:/Users/ericg/Desktop/npu/NPU-Check/android/app/src/main/cpp/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:245:25: error: use of undeclared identifier 'vld1_f16'
+    245 |     return vcvt_f32_f16(vld1_f16((const float16_t *)p));
+        |                         ^
+  2 errors generated.
+  [6/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-impl.cpp.o
+  [7/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-mmap.cpp.o
+  [8/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-chat.cpp.o
+  [9/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-model-saver.cpp.o
+  [10/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-kv-cache-iswa.cpp.o
+  [11/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-graph.cpp.o
+  [12/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-batch.cpp.o
+  [13/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-arch.cpp.o
+  [14/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-model-loader.cpp.o
+  [15/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-memory-recurrent.cpp.o
+  [16/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-kv-cache.cpp.o
+  [17/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-grammar.cpp.o
+  [18/128] Building CXX object src/main/cpp/llama.cpp/src/CMakeFiles/llama.dir/llama-model.cpp.o
+  ninja: build stopped: subcommand failed.
+  
+  C++ build system [build] failed while executing:
+      @echo off
+      "C:\\Users\\ericg\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe" ^
+        -C ^
+        "C:\\Users\\ericg\\Desktop\\npu\\NPU-Check\\build\\.cxx\\debug\\1n4p4mc4\\armeabi-v7a" ^
+        ggml ^
+        ggml-base ^
+        ggml-cpu ^
+        llama ^
+        neural_gauge_native
+    from C:\Users\ericg\Desktop\npu\NPU-Check\android\app
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 21s
+91 actionable tasks: 14 executed, 77 up-to-date

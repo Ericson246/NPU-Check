@@ -1,13 +1,14 @@
 #include <jni.h>
 #include <android/log.h>
 #include <string>
+#include <vector>
 #include <memory>
 #include <cstdlib>
 #include <cstring>
+#include <chrono>
 
 // llama.cpp includes
 #include "llama.h"
-#include "common.h"
 
 #define LOG_TAG "NeuralGauge"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -40,7 +41,7 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_loadModel(
     // Clean up previous model if exists
     if (g_is_loaded) {
         if (g_ctx) llama_free(g_ctx);
-        if (g_model) llama_free_model(g_model);
+        if (g_model) llama_model_free(g_model);
         g_is_loaded = false;
     }
 
@@ -49,10 +50,10 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_loadModel(
 
     // Model parameters
     llama_model_params model_params = llama_model_default_params();
-    model_params.n_gpu_layers = 0; // CPU only for now, can enable GPU later
+    model_params.n_gpu_layers = 0; // CPU only for now
 
     // Load model
-    g_model = llama_load_model_from_file(path, model_params);
+    g_model = llama_model_load_from_file(path, model_params);
     env->ReleaseStringUTFChars(model_path, path);
 
     if (!g_model) {
@@ -62,15 +63,15 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_loadModel(
 
     // Context parameters
     llama_context_params ctx_params = llama_context_default_params();
-    ctx_params.n_ctx = 2048;  // Context size
-    ctx_params.n_batch = 512;
+    ctx_params.n_ctx = 2048;  // Context size, reasonable default
+    // ctx_params.n_batch = 512; // default is 2048 in new API usually, let's leave default or set explicit
     ctx_params.n_threads = 4; // Adjust based on device
 
     // Create context
-    g_ctx = llama_new_context_with_model(g_model, ctx_params);
+    g_ctx = llama_init_from_model(g_model, ctx_params);
     if (!g_ctx) {
         LOGE("Failed to create context");
-        llama_free_model(g_model);
+        llama_model_free(g_model);
         g_model = nullptr;
         return -1;
     }
@@ -111,18 +112,22 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_runInference(
     const char* prompt = env->GetStringUTFChars(prompt_str, nullptr);
     LOGI("Running inference with prompt: %s", prompt);
 
+    const llama_vocab* vocab = llama_model_get_vocab(g_model);
+
     // Tokenize prompt
     std::vector<llama_token> tokens;
-    tokens.resize(llama_n_ctx(g_ctx));
+    // Resize to max context to be safe for tokenization result
+    int n_ctx = llama_n_ctx(g_ctx);
+    tokens.resize(n_ctx);
     
     int n_tokens = llama_tokenize(
-        g_model,
+        vocab,
         prompt,
         strlen(prompt),
         tokens.data(),
         tokens.size(),
-        true,  // add_bos
-        false  // special
+        true,  // add_special
+        false  // parse_special
     );
 
     if (n_tokens < 0) {
@@ -134,9 +139,17 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_runInference(
     tokens.resize(n_tokens);
     env->ReleaseStringUTFChars(prompt_str, prompt);
 
+    // Init sampler
+    auto sparams = llama_sampler_chain_default_params();
+    struct llama_sampler * smpl = llama_sampler_chain_init(sparams);
+    llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
+
     // Evaluate prompt
-    if (llama_decode(g_ctx, llama_batch_get_one(tokens.data(), n_tokens, 0, 0))) {
+    // llama_batch_get_one ( tokens, n_tokens ) -> helper
+    // It sets pos to 0, 1, 2... automatically for this batch
+    if (llama_decode(g_ctx, llama_batch_get_one(tokens.data(), n_tokens))) {
         LOGE("Failed to evaluate prompt");
+        llama_sampler_free(smpl);
         return -1;
     }
 
@@ -146,25 +159,26 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_runInference(
         auto start_time = std::chrono::high_resolution_clock::now();
 
         // Sample next token
-        llama_token new_token = llama_sampler_sample(
-            llama_sampler_chain_default_params(),
-            g_ctx,
-            -1
-        );
+        // idx -1 means sample from the last token in the context
+        llama_token new_token = llama_sampler_sample(smpl, g_ctx, -1);
 
         // Check for EOS
-        if (llama_token_is_eog(g_model, new_token)) {
+        if (llama_vocab_is_eog(vocab, new_token)) {
             break;
         }
 
         // Get token text
         char token_text[256];
-        int len = llama_token_to_piece(g_model, new_token, token_text, sizeof(token_text), 0, false);
+        int len = llama_token_to_piece(vocab, new_token, token_text, sizeof(token_text), 0, false);
         if (len < 0) {
-            LOGE("Failed to convert token to text");
-            break;
+             // If buffer is too small, len is negative (usually -needed_len)
+             // For safety just handle as error or ignore printing
+             // But usually 256 is enough for a token piece
+             // If len is positive, it's bytes written
+             len = 0; 
+        } else {
+             token_text[len] = '\0';
         }
-        token_text[len] = '\0';
 
         // Calculate inference time
         auto end_time = std::chrono::high_resolution_clock::now();
@@ -176,7 +190,14 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_runInference(
         }
 
         // Prepare for next iteration
-        if (llama_decode(g_ctx, llama_batch_get_one(&new_token, 1, n_tokens + i, 0))) {
+        llama_batch batch = llama_batch_get_one(&new_token, 1);
+        // Important: set the correct position for the new token
+        // Prompt took 0 to n_tokens-1, so next is n_tokens + i
+        // Note: llama_batch_get_one sets pos[0] = 0, so we override it
+        // Accessing underlying pos array: batch.pos is a pointer
+        batch.pos[0] = n_tokens + i;
+
+        if (llama_decode(g_ctx, batch)) {
             LOGE("Failed to evaluate token");
             break;
         }
@@ -184,6 +205,7 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_runInference(
         n_generated++;
     }
 
+    llama_sampler_free(smpl);
     LOGI("Generated %d tokens", n_generated);
     return n_generated;
 }
@@ -202,7 +224,7 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_getRamUsage(
 
     // Get model memory usage
     size_t model_size = llama_model_size(g_model);
-    size_t ctx_size = llama_get_state_size(g_ctx);
+    size_t ctx_size = llama_state_get_size(g_ctx);
     
     double total_mb = (model_size + ctx_size) / (1024.0 * 1024.0);
     return total_mb;
@@ -224,7 +246,7 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_disposeModel(
     }
     
     if (g_model) {
-        llama_free_model(g_model);
+        llama_model_free(g_model);
         g_model = nullptr;
     }
     

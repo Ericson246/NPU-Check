@@ -15,6 +15,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.neuralgauge.neural_gauge"
@@ -34,7 +38,8 @@ android {
         }
         
         ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
+            abiFilters.clear()
+            abiFilters.add("arm64-v8a")
         }
     }
 
@@ -44,6 +49,11 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+        }
+        debug {
+            ndk {
+                abiFilters.add("arm64-v8a")
+            }
         }
     }
     
