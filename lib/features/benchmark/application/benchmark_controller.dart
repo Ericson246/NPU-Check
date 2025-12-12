@@ -138,53 +138,29 @@ class BenchmarkController extends _$BenchmarkController {
 
   /// Handle incoming tokens
   void _onTokenReceived(TokenEvent event) {
-    print('DEBUG: _onTokenReceived called with token length: ${event.token.length}');
-    print('DEBUG: Raw token (first 100 chars): ${event.token.substring(0, event.token.length > 100 ? 100 : event.token.length)}');
-    
-    // The event.token contains all generated text with special tokenizer characters
-    // Clean up various special characters used by tokenizers
-    String cleanedText = event.token;
-    
-    // Replace common tokenizer special characters
-    cleanedText = cleanedText.replaceAll(RegExp(r'Ġ'), ' ');  // BPE space token
-    cleanedText = cleanedText.replaceAll(RegExp(r'Ċ'), '\n'); // BPE newline token
-    cleanedText = cleanedText.replaceAll(RegExp(r'ĉ'), '\t');  // BPE tab token
-    cleanedText = cleanedText.trim();
-    
-    // If cleaned text is empty, use original
-    if (cleanedText.isEmpty) {
-      cleanedText = event.token;
-    }
-    
-    // Estimate token count based on words (rough approximation)
-    final words = cleanedText.split(RegExp(r'\s+'))
-        .where((word) => word.isNotEmpty)
-        .toList();
-    _tokensGenerated = words.length;
-    
-    // If word count is too low, estimate from character count
-    if (_tokensGenerated < 5 && cleanedText.length > 20) {
-      _tokensGenerated = (cleanedText.length / 4).round(); // Rough estimate: ~4 chars per token
-    }
-    
-    print('DEBUG: Cleaned text: $cleanedText');
-    print('DEBUG: Estimated tokens: $_tokensGenerated');
-    
-    // Update generated text with cleaned version
-    state = state.copyWith(generatedText: cleanedText);
+    // 1. Update the displayed text
+    state = state.copyWith(generatedText: event.token);
 
-    // Calculate speed
-    if (_startTime != null) {
+    // 2. Estimate token count
+    // This is a rough approximation. For accurate token counting, a proper
+    // tokenizer would be needed. Here, we assume ~4 chars per token.
+    final estimatedTokens = (event.token.length / 4).round();
+    _tokensGenerated = estimatedTokens;
+
+    // 3. Calculate speed
+    if (_startTime != null && _tokensGenerated > 0) {
       final elapsed = DateTime.now().difference(_startTime!);
-      final tokensPerSecond = _tokensGenerated / elapsed.inMilliseconds * 1000;
-      print('DEBUG: Elapsed: ${elapsed.inMilliseconds}ms, Speed: $tokensPerSecond T/s');
-      state = state.copyWith(currentSpeed: tokensPerSecond);
+      if (elapsed.inMilliseconds > 0) {
+        final tokensPerSecond = _tokensGenerated / elapsed.inMilliseconds * 1000;
+        state = state.copyWith(currentSpeed: tokensPerSecond);
+      }
     }
 
-    // Update RAM usage
+    // 4. Update RAM usage (placeholder)
     final ramUsage = _llamaService.getRamUsage();
     state = state.copyWith(ramUsageMB: ramUsage);
   }
+
 
   /// Handle status updates
   void _onStatusUpdate(String status) {
