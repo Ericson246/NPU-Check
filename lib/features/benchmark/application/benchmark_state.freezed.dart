@@ -26,6 +26,7 @@ mixin _$BenchmarkState {
   ModelType get selectedModel => throw _privateConstructorUsedError;
   String? get errorMessage => throw _privateConstructorUsedError;
   String? get modelName => throw _privateConstructorUsedError;
+  BenchmarkWorkload get workload => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
   $BenchmarkStateCopyWith<BenchmarkState> get copyWith =>
@@ -47,7 +48,8 @@ abstract class $BenchmarkStateCopyWith<$Res> {
       BenchmarkStatus status,
       ModelType selectedModel,
       String? errorMessage,
-      String? modelName});
+      String? modelName,
+      BenchmarkWorkload workload});
 }
 
 /// @nodoc
@@ -72,6 +74,7 @@ class _$BenchmarkStateCopyWithImpl<$Res, $Val extends BenchmarkState>
     Object? selectedModel = null,
     Object? errorMessage = freezed,
     Object? modelName = freezed,
+    Object? workload = null,
   }) {
     return _then(_value.copyWith(
       currentSpeed: null == currentSpeed
@@ -110,6 +113,10 @@ class _$BenchmarkStateCopyWithImpl<$Res, $Val extends BenchmarkState>
           ? _value.modelName
           : modelName // ignore: cast_nullable_to_non_nullable
               as String?,
+      workload: null == workload
+          ? _value.workload
+          : workload // ignore: cast_nullable_to_non_nullable
+              as BenchmarkWorkload,
     ) as $Val);
   }
 }
@@ -131,7 +138,8 @@ abstract class _$$BenchmarkStateImplCopyWith<$Res>
       BenchmarkStatus status,
       ModelType selectedModel,
       String? errorMessage,
-      String? modelName});
+      String? modelName,
+      BenchmarkWorkload workload});
 }
 
 /// @nodoc
@@ -154,6 +162,7 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
     Object? selectedModel = null,
     Object? errorMessage = freezed,
     Object? modelName = freezed,
+    Object? workload = null,
   }) {
     return _then(_$BenchmarkStateImpl(
       currentSpeed: null == currentSpeed
@@ -192,6 +201,10 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
           ? _value.modelName
           : modelName // ignore: cast_nullable_to_non_nullable
               as String?,
+      workload: null == workload
+          ? _value.workload
+          : workload // ignore: cast_nullable_to_non_nullable
+              as BenchmarkWorkload,
     ));
   }
 }
@@ -208,7 +221,8 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
       this.status = BenchmarkStatus.idle,
       this.selectedModel = ModelType.tinyStories,
       this.errorMessage,
-      this.modelName});
+      this.modelName,
+      this.workload = BenchmarkWorkload.standard});
 
   @override
   @JsonKey()
@@ -237,10 +251,13 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
   final String? errorMessage;
   @override
   final String? modelName;
+  @override
+  @JsonKey()
+  final BenchmarkWorkload workload;
 
   @override
   String toString() {
-    return 'BenchmarkState(currentSpeed: $currentSpeed, generatedText: $generatedText, progress: $progress, isOfflineMode: $isOfflineMode, ramUsageMB: $ramUsageMB, status: $status, selectedModel: $selectedModel, errorMessage: $errorMessage, modelName: $modelName)';
+    return 'BenchmarkState(currentSpeed: $currentSpeed, generatedText: $generatedText, progress: $progress, isOfflineMode: $isOfflineMode, ramUsageMB: $ramUsageMB, status: $status, selectedModel: $selectedModel, errorMessage: $errorMessage, modelName: $modelName, workload: $workload)';
   }
 
   @override
@@ -264,7 +281,9 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
             (identical(other.errorMessage, errorMessage) ||
                 other.errorMessage == errorMessage) &&
             (identical(other.modelName, modelName) ||
-                other.modelName == modelName));
+                other.modelName == modelName) &&
+            (identical(other.workload, workload) ||
+                other.workload == workload));
   }
 
   @override
@@ -278,7 +297,8 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
       status,
       selectedModel,
       errorMessage,
-      modelName);
+      modelName,
+      workload);
 
   @JsonKey(ignore: true)
   @override
@@ -298,7 +318,8 @@ abstract class _BenchmarkState implements BenchmarkState {
       final BenchmarkStatus status,
       final ModelType selectedModel,
       final String? errorMessage,
-      final String? modelName}) = _$BenchmarkStateImpl;
+      final String? modelName,
+      final BenchmarkWorkload workload}) = _$BenchmarkStateImpl;
 
   @override
   double get currentSpeed;
@@ -318,6 +339,8 @@ abstract class _BenchmarkState implements BenchmarkState {
   String? get errorMessage;
   @override
   String? get modelName;
+  @override
+  BenchmarkWorkload get workload;
   @override
   @JsonKey(ignore: true)
   _$$BenchmarkStateImplCopyWith<_$BenchmarkStateImpl> get copyWith =>

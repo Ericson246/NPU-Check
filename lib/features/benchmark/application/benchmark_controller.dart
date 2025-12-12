@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import '../../../core/services/llama_service.dart';
@@ -11,34 +12,58 @@ import 'benchmark_state.dart';
 part 'benchmark_controller.g.dart';
 
 @riverpod
+@riverpod
 class BenchmarkController extends _$BenchmarkController {
-  late final LlamaService _llamaService;
+  LlamaService? _llamaService;
   late final ModelManager _modelManager;
   late final BenchmarkRepository _repository;
+  StreamSubscription? _tokenSubscription;
+  StreamSubscription? _statusSubscription;
   
   int _tokensGenerated = 0;
   DateTime? _startTime;
 
   @override
   BenchmarkState build() {
-    _llamaService = LlamaService();
     _modelManager = ModelManager();
     _repository = ref.watch(benchmarkRepositoryProvider);
     
-    // Listen to token stream
-    _llamaService.tokenStream.listen(_onTokenReceived);
-    _llamaService.statusStream.listen(_onStatusUpdate);
-    
     ref.onDispose(() {
-      _llamaService.dispose();
+      _disposeService();
     });
 
     return const BenchmarkState();
   }
 
+  Future<void> _initService() async {
+    if (_llamaService != null) return;
+    
+    _llamaService = LlamaService();
+    
+    _tokenSubscription = _llamaService!.tokenStream.listen(_onTokenReceived);
+    _statusSubscription = _llamaService!.statusStream.listen(_onStatusUpdate);
+    
+    await _llamaService!.initialize();
+  }
+
+  Future<void> _disposeService() async {
+    await _tokenSubscription?.cancel();
+    await _statusSubscription?.cancel();
+    _tokenSubscription = null;
+    _statusSubscription = null;
+    
+    await _llamaService?.dispose();
+    _llamaService = null;
+  }
+
   /// Select a model
   void selectModel(ModelType modelType) {
     state = state.copyWith(selectedModel: modelType);
+  }
+
+  /// Select a workload
+  void selectWorkload(BenchmarkWorkload workload) {
+    state = state.copyWith(workload: workload);
   }
 
   /// Start a benchmark
@@ -52,7 +77,7 @@ class BenchmarkController extends _$BenchmarkController {
       );
 
       // Initialize service
-      await _llamaService.initialize();
+      await _initService();
 
       // Select model strategy based on selected model
       final strategy = await _modelManager.selectStrategy(
@@ -107,7 +132,7 @@ class BenchmarkController extends _$BenchmarkController {
       }
 
       // Load model
-      await _llamaService.loadModel(modelPath);
+      await _llamaService!.loadModel(modelPath);
 
       // Start inference
       state = state.copyWith(
@@ -117,23 +142,50 @@ class BenchmarkController extends _$BenchmarkController {
 
       _tokensGenerated = 0;
       _startTime = DateTime.now();
+      
+      final workload = state.workload;
+      
+      if (workload.isTimeBased) {
+        // Time-based loop
+        while (DateTime.now().difference(_startTime!) < workload.minDuration) {
+          // Verify if we should stop (user cancelled)
+          if (state.status != BenchmarkStatus.running) break;
+          
+          await _runOnePass(maxTokens: 1024); // Use large max tokens to fill time
+        }
+      } else {
+        // Token-based (single pass)
+        await _runOnePass(maxTokens: workload.tokens);
+      }
 
-      await _llamaService.runInference(
-        'Write a short story about artificial intelligence:',
-        maxTokens: 50,
-      );
-
-      // Save result
-      await _saveResult();
-
-      state = state.copyWith(status: BenchmarkStatus.completed);
+      // Check if we were cancelled during the loop
+      if (state.status == BenchmarkStatus.running) {
+        // Save result
+        await _saveResult();
+        state = state.copyWith(status: BenchmarkStatus.completed);
+      }
       
     } catch (e) {
+      await _disposeService();
       state = state.copyWith(
         status: BenchmarkStatus.error,
         errorMessage: e.toString(),
       );
     }
+  }
+
+  Future<void> _runOnePass({required int maxTokens}) async {
+    // Start inference
+    await _llamaService!.runInference(
+      'Write a short story about artificial intelligence:',
+      maxTokens: maxTokens,
+    );
+    
+    // Wait for completion
+    // We listen to the status stream for "Inference complete"
+    await _llamaService!.statusStream.firstWhere(
+      (msg) => msg.startsWith('Inference complete') || msg.startsWith('Error'),
+    );
   }
 
   /// Handle incoming tokens
@@ -147,17 +199,32 @@ class BenchmarkController extends _$BenchmarkController {
     final estimatedTokens = (event.token.length / 4).round();
     _tokensGenerated = estimatedTokens;
 
-    // 3. Calculate speed
+    // 3. Calculate speed & progress
     if (_startTime != null && _tokensGenerated > 0) {
-      final elapsed = DateTime.now().difference(_startTime!);
+      final now = DateTime.now();
+      final elapsed = now.difference(_startTime!);
+      
       if (elapsed.inMilliseconds > 0) {
         final tokensPerSecond = _tokensGenerated / elapsed.inMilliseconds * 1000;
-        state = state.copyWith(currentSpeed: tokensPerSecond);
+        
+        double progress;
+        if (state.workload.isTimeBased) {
+          // Progress based on time
+          progress = elapsed.inMilliseconds / state.workload.minDuration.inMilliseconds;
+        } else {
+          // Progress based on tokens
+          progress = _tokensGenerated / state.workload.tokens;
+        }
+        
+        state = state.copyWith(
+          currentSpeed: tokensPerSecond,
+          progress: progress.clamp(0.0, 1.0),
+        );
       }
     }
 
     // 4. Update RAM usage (placeholder)
-    final ramUsage = _llamaService.getRamUsage();
+    final ramUsage = _llamaService?.getRamUsage() ?? 0.0;
     state = state.copyWith(ramUsageMB: ramUsage);
   }
 
@@ -197,7 +264,7 @@ class BenchmarkController extends _$BenchmarkController {
 
   /// Stop the benchmark
   Future<void> stopBenchmark() async {
-    await _llamaService.dispose();
+    await _disposeService();
     state = state.copyWith(status: BenchmarkStatus.idle);
   }
 }

@@ -9,6 +9,8 @@ class AppTheme {
   static const Color neonBlue = Color(0xFF0080FF);
   static const Color neonGreen = Color(0xFF00FF41);
   static const Color neonOrange = Color(0xFFFF6B00);
+  static const Color neonPurple = Color(0xFFBC13FE);
+  static const Color white = Colors.white;
   
   // Dark Background
   static const Color darkBg = Color(0xFF0A0E1A);

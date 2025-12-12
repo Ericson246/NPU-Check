@@ -39,6 +39,11 @@ class HomeScreen extends ConsumerWidget {
                 
                 const SizedBox(height: 20),
                 
+                // Workload Selector
+                _buildWorkloadSelector(ref, benchmarkState),
+
+                const SizedBox(height: 20),
+
                 // Speedometer
                 Center(
                   child: Column(
@@ -62,6 +67,55 @@ class HomeScreen extends ConsumerWidget {
                 
                 const SizedBox(height: 20),
                 
+                // Progress Bar
+                if (benchmarkState.status == BenchmarkStatus.running || 
+                    benchmarkState.status == BenchmarkStatus.downloading)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              benchmarkState.status == BenchmarkStatus.downloading
+                                  ? 'DOWNLOADING MODEL...'
+                                  : 'BENCHMARK PROGRESS',
+                              style: const TextStyle(
+                                fontFamily: 'RobotoMono',
+                                fontSize: 10,
+                                color: AppTheme.neonCyan,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            Text(
+                              '${(benchmarkState.progress * 100).toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                fontFamily: 'RobotoMono',
+                                fontSize: 10,
+                                color: AppTheme.neonCyan,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: benchmarkState.progress,
+                            backgroundColor: AppTheme.darkBgTertiary,
+                            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.neonCyan),
+                            minHeight: 6,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                const SizedBox(height: 20),
+
                 // Generated text display
                 if (benchmarkState.generatedText.isNotEmpty)
                   Container(
@@ -292,19 +346,25 @@ class HomeScreen extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: ElevatedButton(
-        onPressed: isRunning
-            ? null
-            : () => controller.startBenchmark(),
+        onPressed: () {
+          if (isRunning) {
+            controller.stopBenchmark();
+          } else {
+            controller.startBenchmark();
+          }
+        },
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.neonCyan,
+          backgroundColor: isRunning ? AppTheme.neonOrange : AppTheme.neonCyan,
           disabledBackgroundColor: AppTheme.darkBgTertiary,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          shadowColor: isRunning ? AppTheme.neonOrange : AppTheme.neonCyan,
+          elevation: 8,
         ),
         child: Text(
-          isRunning ? 'RUNNING...' : 'START BENCHMARK',
+          isRunning ? 'STOP BENCHMARK' : 'START BENCHMARK',
           style: const TextStyle(
             fontFamily: 'Orbitron',
             fontSize: 16,
@@ -316,4 +376,95 @@ class HomeScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _buildWorkloadSelector(WidgetRef ref, BenchmarkState state) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.darkBgSecondary,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.neonPurple.withOpacity(0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'WORKLOAD INTENSITY',
+              style: TextStyle(
+                fontFamily: 'RobotoMono',
+                fontSize: 10,
+                color: AppTheme.textSecondary,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: BenchmarkWorkload.values.map((workload) {
+                final isSelected = state.workload == workload;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (state.status == BenchmarkStatus.idle || 
+                          state.status == BenchmarkStatus.completed || 
+                          state.status == BenchmarkStatus.error) {
+                        ref.read(benchmarkControllerProvider.notifier).selectWorkload(workload);
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected 
+                            ? AppTheme.neonPurple.withOpacity(0.2) 
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected 
+                              ? AppTheme.neonPurple 
+                              : AppTheme.darkBgTertiary,
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            workload.label.toUpperCase(),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Orbitron',
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected 
+                                  ? AppTheme.neonPurple 
+                                  : AppTheme.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            workload.isTimeBased 
+                                ? '${workload.minDuration.inSeconds}s' 
+                                : '${workload.tokens} TOKENS',
+                            style: TextStyle(
+                              fontFamily: 'RobotoMono',
+                              fontSize: 10,
+                              color: isSelected 
+                                  ? AppTheme.white 
+                                  : AppTheme.textSecondary.withOpacity(0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+

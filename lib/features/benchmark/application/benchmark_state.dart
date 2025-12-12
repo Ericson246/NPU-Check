@@ -15,6 +15,7 @@ class BenchmarkState with _$BenchmarkState {
     @Default(ModelType.tinyStories) ModelType selectedModel,
     String? errorMessage,
     String? modelName,
+    @Default(BenchmarkWorkload.standard) BenchmarkWorkload workload,
   }) = _BenchmarkState;
 }
 
@@ -25,4 +26,18 @@ enum BenchmarkStatus {
   running,
   completed,
   error,
+}
+
+enum BenchmarkWorkload {
+  quick(50, Duration.zero, 'Quick Scan'),
+  standard(256, Duration(seconds: 15), 'Standard'),
+  stress(1024, Duration(seconds: 60), 'Stress Test');
+
+  final int tokens;
+  final Duration minDuration;
+  final String label;
+  
+  const BenchmarkWorkload(this.tokens, this.minDuration, this.label);
+  
+  bool get isTimeBased => minDuration > Duration.zero;
 }

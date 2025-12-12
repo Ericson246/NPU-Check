@@ -319,6 +319,10 @@ int32_t run_inference(const char* prompt, int32_t max_tokens) {
     }
     
     LOGI("FFI: Running inference with prompt: %s", prompt);
+
+    // Clear KV cache to ensure fresh start
+    // Clear KV cache to ensure fresh start
+    llama_memory_clear(llama_get_memory(g_ctx), true);
     
     // Clear previous generated text
     g_generated_text.clear();
@@ -328,14 +332,20 @@ int32_t run_inference(const char* prompt, int32_t max_tokens) {
     
     // Tokenize prompt
     std::vector<llama_token> tokens;
-    const int n_prompt_tokens = -llama_tokenize(vocab, prompt, strlen(prompt), nullptr, 0, true, true);
-    tokens.resize(n_prompt_tokens);
-    llama_tokenize(vocab, prompt, strlen(prompt), tokens.data(), tokens.size(), true, true);
+    const int n_prompt_tokens_est = -llama_tokenize(vocab, prompt, strlen(prompt), nullptr, 0, true, true);
+    tokens.resize(n_prompt_tokens_est);
+    const int n_prompt_tokens = llama_tokenize(vocab, prompt, strlen(prompt), tokens.data(), tokens.size(), true, true);
     
-    LOGI("FFI: Prompt tokenized to %zu tokens", tokens.size());
+    if (n_prompt_tokens < 0) {
+        LOGE("FFI: Failed to tokenize prompt");
+        return -1;
+    }
+    tokens.resize(n_prompt_tokens);
+
+    LOGI("FFI: Prompt tokenized to %d tokens", n_prompt_tokens);
     
     // Process prompt
-    llama_batch batch = llama_batch_get_one(tokens.data(), tokens.size());
+    llama_batch batch = llama_batch_get_one(tokens.data(), n_prompt_tokens);
     if (llama_decode(g_ctx, batch) != 0) {
         LOGE("FFI: Failed to decode prompt");
         return -1;
@@ -348,7 +358,7 @@ int32_t run_inference(const char* prompt, int32_t max_tokens) {
     for (int i = 0; i < max_tokens; i++) {
         // Sample next token
         auto* logits = llama_get_logits_ith(g_ctx, -1);
-        auto n_vocab = llama_n_vocab(vocab);
+        auto n_vocab = llama_vocab_n_tokens(vocab);
         
         // Simple greedy sampling
         llama_token new_token = 0;
@@ -383,8 +393,12 @@ int32_t run_inference(const char* prompt, int32_t max_tokens) {
         
         // Prepare next batch
         batch = llama_batch_get_one(&new_token, 1);
+        
+        // Update position for the new token (continuation)
+        batch.pos[0] = n_prompt_tokens + i;
+
         if (llama_decode(g_ctx, batch) != 0) {
-            LOGE("FFI: Failed to decode token");
+            LOGE("FFI: Failed to decode token step %d", i);
             break;
         }
         
