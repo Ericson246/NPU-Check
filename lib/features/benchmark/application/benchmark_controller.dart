@@ -54,7 +54,7 @@ class BenchmarkController extends _$BenchmarkController {
       );
 
       state = state.copyWith(
-        isOfflineMode: strategy is OfflineModelStrategy,
+        isOfflineMode: forceOffline,
         modelName: strategy.modelName,
       );
 
@@ -76,17 +76,24 @@ class BenchmarkController extends _$BenchmarkController {
         try {
           modelPath = await _modelManager.downloadModel(strategyWithProgress);
         } catch (e) {
-          // Fallback to offline
+          // Download failed
           state = state.copyWith(
-            isOfflineMode: true,
-            status: BenchmarkStatus.loadingModel,
+            status: BenchmarkStatus.error,
+            errorMessage: 'Failed to download model: $e',
           );
-          final offlineStrategy = OfflineModelStrategy();
-          modelPath = await _modelManager.extractAssetModel(offlineStrategy);
-          state = state.copyWith(modelName: offlineStrategy.modelName);
+          return;
         }
       } else if (strategy is OfflineModelStrategy) {
-        modelPath = await _modelManager.extractAssetModel(strategy);
+        // This shouldn't happen anymore, but keep for backwards compatibility
+        try {
+          modelPath = await _modelManager.extractAssetModel(strategy);
+        } catch (e) {
+          state = state.copyWith(
+            status: BenchmarkStatus.error,
+            errorMessage: 'Model not found. Please connect to internet to download.',
+          );
+          return;
+        }
       } else {
         modelPath = await strategy.getModelPath();
       }

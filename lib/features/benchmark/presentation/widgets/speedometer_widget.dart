@@ -111,27 +111,30 @@ class _SpeedometerPainter extends CustomPainter {
     final speedPercent = (speed / maxSpeed).clamp(0.0, 1.0);
     final sweepAngle = pi * 1.5 * speedPercent;
 
-    final speedArcPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: pi * 0.75,
-        endAngle: pi * 0.75 + sweepAngle,
-        colors: [
-          AppTheme.neonCyan,
-          AppTheme.neonBlue,
-          AppTheme.neonMagenta,
-        ],
-      ).createShader(Rect.fromCircle(center: center, radius: radius))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 15
-      ..strokeCap = StrokeCap.round;
+    // Only draw if there's actually some speed to show
+    if (sweepAngle > 0.01) {
+      final speedArcPaint = Paint()
+        ..shader = SweepGradient(
+          colors: [
+            AppTheme.neonCyan,
+            AppTheme.neonBlue,
+            AppTheme.neonMagenta,
+          ],
+          stops: const [0.0, 0.5, 1.0],
+          transform: GradientRotation(pi * 0.75),
+        ).createShader(Rect.fromCircle(center: center, radius: radius))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 15
+        ..strokeCap = StrokeCap.round;
 
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      pi * 0.75,
-      sweepAngle,
-      false,
-      speedArcPaint,
-    );
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        pi * 0.75,
+        sweepAngle,
+        false,
+        speedArcPaint,
+      );
+    }
 
     // Draw needle
     final needleAngle = pi * 0.75 + sweepAngle;

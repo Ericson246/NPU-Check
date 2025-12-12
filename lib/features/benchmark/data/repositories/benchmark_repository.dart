@@ -8,7 +8,12 @@ class BenchmarkRepository {
   /// Initialize Hive and open the box
   Future<void> initialize() async {
     await Hive.initFlutter();
-    Hive.registerAdapter(BenchmarkResultAdapter());
+    
+    // Only register adapter if not already registered
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(BenchmarkResultAdapter());
+    }
+    
     _box = await Hive.openBox<BenchmarkResult>(_boxName);
   }
 

@@ -26,7 +26,18 @@ class ModelManager {
     bool forceOffline = false,
   }) async {
     if (forceOffline) {
-      return OfflineModelStrategy();
+      // For offline mode, check if TinyLlama is cached, otherwise download it
+      final cachedPath = await _getCachedModelPath('tinyllama-1.1b-q4_k_m.gguf');
+      if (cachedPath != null && await File(cachedPath).exists()) {
+        return _CachedModelStrategy(cachedPath, 'TinyLlama-1.1B (Nano)', 637.0);
+      }
+      
+      // Return strategy to download TinyLlama
+      return OnlineModelStrategy(
+        downloadUrl: 'https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf',
+        modelName: 'TinyLlama-1.1B (Nano)',
+        sizeMB: 637.0,
+      );
     }
 
     final hasInternet = await hasConnectivity();
@@ -47,7 +58,13 @@ class ModelManager {
       );
     }
 
-    // No internet, use offline model
+    // No internet, try to use cached TinyLlama
+    final cachedPath = await _getCachedModelPath('tinyllama-1.1b-q4_k_m.gguf');
+    if (cachedPath != null && await File(cachedPath).exists()) {
+      return _CachedModelStrategy(cachedPath, 'TinyLlama-1.1B (Nano)', 637.0);
+    }
+    
+    // No internet and no cached model - this will fail, but we return offline strategy
     return OfflineModelStrategy();
   }
 
