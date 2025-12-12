@@ -4,6 +4,7 @@ import '../../application/benchmark_controller.dart';
 import '../../application/benchmark_state.dart';
 import '../widgets/speedometer_widget.dart';
 import '../widgets/typewriter_text.dart';
+import '../widgets/model_selector_widget.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -17,16 +18,29 @@ class HomeScreen extends ConsumerWidget {
       body: Container(
         decoration: BoxDecoration(gradient: AppTheme.darkGradient),
         child: SafeArea(
-          child: Column(
-            children: [
-              // Header with connectivity indicator
-              _buildHeader(benchmarkState),
-              
-              const SizedBox(height: 20),
-              
-              // Speedometer
-              Expanded(
-                child: Center(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Header with connectivity indicator
+                _buildHeader(benchmarkState),
+                
+                const SizedBox(height: 20),
+                
+                // Model Selector
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: ModelSelectorWidget(
+                    selectedModel: benchmarkState.selectedModel,
+                    onModelSelected: (model) {
+                      ref.read(benchmarkControllerProvider.notifier).selectModel(model);
+                    },
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Speedometer
+                Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -45,31 +59,46 @@ class HomeScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-              ),
-              
-              // Generated text display
-              if (benchmarkState.generatedText.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: TypewriterText(
-                    text: benchmarkState.generatedText,
+                
+                const SizedBox(height: 20),
+                
+                // Generated text display
+                if (benchmarkState.generatedText.isNotEmpty)
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 150),
+                    margin: const EdgeInsets.symmetric(horizontal: 16.0),
+                    padding: const EdgeInsets.all(12.0),
+                    decoration: BoxDecoration(
+                      color: AppTheme.darkBgSecondary,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.neonCyan.withOpacity(0.3),
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      child: TypewriterText(
+                        text: benchmarkState.generatedText,
+                      ),
+                    ),
                   ),
-                ),
-              
-              // Status message
-              if (benchmarkState.status != BenchmarkStatus.idle)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: _buildStatusMessage(benchmarkState),
-                ),
-              
-              const SizedBox(height: 20),
-              
-              // Control buttons
-              _buildControls(context, ref, benchmarkState),
-              
-              const SizedBox(height: 20),
-            ],
+                
+                const SizedBox(height: 12),
+                
+                // Status message
+                if (benchmarkState.status != BenchmarkStatus.idle)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: _buildStatusMessage(benchmarkState),
+                  ),
+                
+                const SizedBox(height: 20),
+                
+                // Control buttons
+                _buildControls(context, ref, benchmarkState),
+                
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -201,7 +230,7 @@ class HomeScreen extends ConsumerWidget {
         color = AppTheme.neonGreen;
         break;
       case BenchmarkStatus.completed:
-        message = 'BENCHMARK COMPLETE';
+        message = 'BENCHMARK COMPLETE - ${state.currentSpeed.toStringAsFixed(1)} TOKENS/SEC';
         color = AppTheme.neonGreen;
         break;
       case BenchmarkStatus.error:
@@ -262,52 +291,28 @@ class HomeScreen extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Row(
-        children: [
-          // Start/Stop button
-          Expanded(
-            child: ElevatedButton(
-              onPressed: isRunning
-                  ? null
-                  : () => controller.startBenchmark(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.neonCyan,
-                disabledBackgroundColor: AppTheme.darkBgTertiary,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: Text(
-                isRunning ? 'RUNNING...' : 'START BENCHMARK',
-                style: const TextStyle(
-                  fontFamily: 'Orbitron',
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
-              ),
-            ),
+      child: ElevatedButton(
+        onPressed: isRunning
+            ? null
+            : () => controller.startBenchmark(),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.neonCyan,
+          disabledBackgroundColor: AppTheme.darkBgTertiary,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          
-          const SizedBox(width: 12),
-          
-          // Offline mode toggle
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.darkBgSecondary,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.neonMagenta.withOpacity(0.5),
-              ),
-              boxShadow: AppTheme.neonGlow(AppTheme.neonMagenta, intensity: 0.3),
-            ),
-            child: IconButton(
-              onPressed: isRunning
-                  ? null
-                  : () => controller.startBenchmark(forceOffline: true),
-              icon: const Icon(Icons.cloud_off, color: AppTheme.neonMagenta),
-              tooltip: 'Force Offline Mode',
-            ),
+        ),
+        child: Text(
+          isRunning ? 'RUNNING...' : 'START BENCHMARK',
+          style: const TextStyle(
+            fontFamily: 'Orbitron',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 2,
+            color: AppTheme.darkBg,
           ),
-        ],
+        ),
       ),
     );
   }

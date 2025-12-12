@@ -23,6 +23,7 @@ mixin _$BenchmarkState {
   bool get isOfflineMode => throw _privateConstructorUsedError;
   double get ramUsageMB => throw _privateConstructorUsedError;
   BenchmarkStatus get status => throw _privateConstructorUsedError;
+  ModelType get selectedModel => throw _privateConstructorUsedError;
   String? get errorMessage => throw _privateConstructorUsedError;
   String? get modelName => throw _privateConstructorUsedError;
 
@@ -44,6 +45,7 @@ abstract class $BenchmarkStateCopyWith<$Res> {
       bool isOfflineMode,
       double ramUsageMB,
       BenchmarkStatus status,
+      ModelType selectedModel,
       String? errorMessage,
       String? modelName});
 }
@@ -67,6 +69,7 @@ class _$BenchmarkStateCopyWithImpl<$Res, $Val extends BenchmarkState>
     Object? isOfflineMode = null,
     Object? ramUsageMB = null,
     Object? status = null,
+    Object? selectedModel = null,
     Object? errorMessage = freezed,
     Object? modelName = freezed,
   }) {
@@ -95,6 +98,10 @@ class _$BenchmarkStateCopyWithImpl<$Res, $Val extends BenchmarkState>
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
               as BenchmarkStatus,
+      selectedModel: null == selectedModel
+          ? _value.selectedModel
+          : selectedModel // ignore: cast_nullable_to_non_nullable
+              as ModelType,
       errorMessage: freezed == errorMessage
           ? _value.errorMessage
           : errorMessage // ignore: cast_nullable_to_non_nullable
@@ -122,6 +129,7 @@ abstract class _$$BenchmarkStateImplCopyWith<$Res>
       bool isOfflineMode,
       double ramUsageMB,
       BenchmarkStatus status,
+      ModelType selectedModel,
       String? errorMessage,
       String? modelName});
 }
@@ -143,6 +151,7 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
     Object? isOfflineMode = null,
     Object? ramUsageMB = null,
     Object? status = null,
+    Object? selectedModel = null,
     Object? errorMessage = freezed,
     Object? modelName = freezed,
   }) {
@@ -171,6 +180,10 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
               as BenchmarkStatus,
+      selectedModel: null == selectedModel
+          ? _value.selectedModel
+          : selectedModel // ignore: cast_nullable_to_non_nullable
+              as ModelType,
       errorMessage: freezed == errorMessage
           ? _value.errorMessage
           : errorMessage // ignore: cast_nullable_to_non_nullable
@@ -193,6 +206,7 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
       this.isOfflineMode = false,
       this.ramUsageMB = 0.0,
       this.status = BenchmarkStatus.idle,
+      this.selectedModel = ModelType.tinyStories,
       this.errorMessage,
       this.modelName});
 
@@ -217,13 +231,16 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
   @JsonKey()
   final BenchmarkStatus status;
   @override
+  @JsonKey()
+  final ModelType selectedModel;
+  @override
   final String? errorMessage;
   @override
   final String? modelName;
 
   @override
   String toString() {
-    return 'BenchmarkState(currentSpeed: $currentSpeed, generatedText: $generatedText, progress: $progress, isOfflineMode: $isOfflineMode, ramUsageMB: $ramUsageMB, status: $status, errorMessage: $errorMessage, modelName: $modelName)';
+    return 'BenchmarkState(currentSpeed: $currentSpeed, generatedText: $generatedText, progress: $progress, isOfflineMode: $isOfflineMode, ramUsageMB: $ramUsageMB, status: $status, selectedModel: $selectedModel, errorMessage: $errorMessage, modelName: $modelName)';
   }
 
   @override
@@ -242,6 +259,8 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
             (identical(other.ramUsageMB, ramUsageMB) ||
                 other.ramUsageMB == ramUsageMB) &&
             (identical(other.status, status) || other.status == status) &&
+            (identical(other.selectedModel, selectedModel) ||
+                other.selectedModel == selectedModel) &&
             (identical(other.errorMessage, errorMessage) ||
                 other.errorMessage == errorMessage) &&
             (identical(other.modelName, modelName) ||
@@ -249,8 +268,17 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, currentSpeed, generatedText,
-      progress, isOfflineMode, ramUsageMB, status, errorMessage, modelName);
+  int get hashCode => Object.hash(
+      runtimeType,
+      currentSpeed,
+      generatedText,
+      progress,
+      isOfflineMode,
+      ramUsageMB,
+      status,
+      selectedModel,
+      errorMessage,
+      modelName);
 
   @JsonKey(ignore: true)
   @override
@@ -268,6 +296,7 @@ abstract class _BenchmarkState implements BenchmarkState {
       final bool isOfflineMode,
       final double ramUsageMB,
       final BenchmarkStatus status,
+      final ModelType selectedModel,
       final String? errorMessage,
       final String? modelName}) = _$BenchmarkStateImpl;
 
@@ -283,6 +312,8 @@ abstract class _BenchmarkState implements BenchmarkState {
   double get ramUsageMB;
   @override
   BenchmarkStatus get status;
+  @override
+  ModelType get selectedModel;
   @override
   String? get errorMessage;
   @override

@@ -18,6 +18,7 @@
 static llama_model* g_model = nullptr;
 static llama_context* g_ctx = nullptr;
 static bool g_is_loaded = false;
+static std::string g_generated_text; // Store generated text
 
 // Token callback function pointer (set from Dart)
 typedef void (*TokenCallback)(const char* token, int64_t time_ms);
@@ -253,6 +254,185 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_disposeModel(
     llama_backend_free();
     g_is_loaded = false;
     g_token_callback = nullptr;
+}
+
+// ============================================================================
+// FFI Functions for Dart (non-JNI)
+// ============================================================================
+
+/**
+ * Load model - FFI version for Dart
+ * Returns: 0 on success, -1 on failure
+ */
+int32_t load_model(const char* model_path) {
+    LOGI("FFI: Loading model from: %s", model_path);
+    
+    // Clean up previous model if exists
+    if (g_is_loaded) {
+        if (g_ctx) llama_free(g_ctx);
+        if (g_model) llama_model_free(g_model);
+        g_is_loaded = false;
+    }
+    
+    // Initialize llama backend
+    llama_backend_init();
+    
+    // Model parameters
+    llama_model_params model_params = llama_model_default_params();
+    model_params.n_gpu_layers = 0; // CPU only for now
+    
+    // Load model
+    g_model = llama_model_load_from_file(model_path, model_params);
+    if (!g_model) {
+        LOGE("FFI: Failed to load model");
+        return -1;
+    }
+    
+    // Context parameters
+    llama_context_params ctx_params = llama_context_default_params();
+    ctx_params.n_ctx = 512;  // Smaller context for mobile
+    ctx_params.n_batch = 128;
+    ctx_params.n_threads = 4;
+    
+    // Create context
+    g_ctx = llama_init_from_model(g_model, ctx_params);
+    if (!g_ctx) {
+        LOGE("FFI: Failed to create context");
+        llama_model_free(g_model);
+        g_model = nullptr;
+        return -1;
+    }
+    
+    g_is_loaded = true;
+    LOGI("FFI: Model loaded successfully");
+    return 0;
+}
+
+/**
+ * Run inference - FFI version for Dart
+ * Returns: number of tokens generated, or -1 on error
+ */
+int32_t run_inference(const char* prompt, int32_t max_tokens) {
+    if (!g_is_loaded || !g_model || !g_ctx) {
+        LOGE("FFI: Model not loaded");
+        return -1;
+    }
+    
+    LOGI("FFI: Running inference with prompt: %s", prompt);
+    
+    // Clear previous generated text
+    g_generated_text.clear();
+    
+    // Get model vocabulary
+    const auto* vocab = llama_model_get_vocab(g_model);
+    
+    // Tokenize prompt
+    std::vector<llama_token> tokens;
+    const int n_prompt_tokens = -llama_tokenize(vocab, prompt, strlen(prompt), nullptr, 0, true, true);
+    tokens.resize(n_prompt_tokens);
+    llama_tokenize(vocab, prompt, strlen(prompt), tokens.data(), tokens.size(), true, true);
+    
+    LOGI("FFI: Prompt tokenized to %zu tokens", tokens.size());
+    
+    // Process prompt
+    llama_batch batch = llama_batch_get_one(tokens.data(), tokens.size());
+    if (llama_decode(g_ctx, batch) != 0) {
+        LOGE("FFI: Failed to decode prompt");
+        return -1;
+    }
+    
+    // Generate tokens
+    int n_generated = 0;
+    std::string generated_text;
+    
+    for (int i = 0; i < max_tokens; i++) {
+        // Sample next token
+        auto* logits = llama_get_logits_ith(g_ctx, -1);
+        auto n_vocab = llama_n_vocab(vocab);
+        
+        // Simple greedy sampling
+        llama_token new_token = 0;
+        float max_logit = logits[0];
+        for (int j = 1; j < n_vocab; j++) {
+            if (logits[j] > max_logit) {
+                max_logit = logits[j];
+                new_token = j;
+            }
+        }
+        
+        // Check for end of generation
+        if (llama_vocab_is_eog(vocab, new_token)) {
+            LOGI("FFI: End of generation");
+            break;
+        }
+        
+        // Convert token to text
+        const char* token_str = llama_vocab_get_text(vocab, new_token);
+        if (token_str && strlen(token_str) > 0) {
+            generated_text += token_str;
+            
+            // Call callback if set
+            if (g_token_callback) {
+                auto now = std::chrono::system_clock::now();
+                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    now.time_since_epoch()
+                ).count();
+                g_token_callback(token_str, ms);
+            }
+        }
+        
+        // Prepare next batch
+        batch = llama_batch_get_one(&new_token, 1);
+        if (llama_decode(g_ctx, batch) != 0) {
+            LOGE("FFI: Failed to decode token");
+            break;
+        }
+        
+        n_generated++;
+    }
+    
+    // Store generated text in global variable
+    g_generated_text = generated_text;
+    
+    LOGI("FFI: Generated %d tokens: %s", n_generated, generated_text.c_str());
+    return n_generated;
+}
+
+/**
+ * Dispose model - FFI version for Dart
+ */
+void dispose_model() {
+    LOGI("FFI: Disposing model");
+    
+    if (g_ctx) {
+        llama_free(g_ctx);
+        g_ctx = nullptr;
+    }
+    
+    if (g_model) {
+        llama_model_free(g_model);
+        g_model = nullptr;
+    }
+    
+    llama_backend_free();
+    g_is_loaded = false;
+    g_token_callback = nullptr;
+}
+
+/**
+ * Set token callback - FFI version for Dart
+ */
+void set_token_callback(TokenCallback callback) {
+    LOGI("FFI: Setting token callback");
+    g_token_callback = callback;
+}
+
+/**
+ * Get generated text - FFI version for Dart
+ * Returns: pointer to generated text string
+ */
+const char* get_generated_text() {
+    return g_generated_text.c_str();
 }
 
 } // extern "C"

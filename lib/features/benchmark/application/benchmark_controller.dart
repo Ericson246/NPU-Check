@@ -3,6 +3,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import '../../../core/services/llama_service.dart';
 import '../domain/model_manager.dart';
 import '../domain/model_strategy.dart';
+import '../domain/model_type.dart';
 import '../data/repositories/benchmark_repository.dart';
 import '../data/models/benchmark_result.dart';
 import 'benchmark_state.dart';
@@ -35,8 +36,13 @@ class BenchmarkController extends _$BenchmarkController {
     return const BenchmarkState();
   }
 
+  /// Select a model
+  void selectModel(ModelType modelType) {
+    state = state.copyWith(selectedModel: modelType);
+  }
+
   /// Start a benchmark
-  Future<void> startBenchmark({bool forceOffline = false}) async {
+  Future<void> startBenchmark() async {
     try {
       state = state.copyWith(
         status: BenchmarkStatus.loadingModel,
@@ -48,13 +54,12 @@ class BenchmarkController extends _$BenchmarkController {
       // Initialize service
       await _llamaService.initialize();
 
-      // Select model strategy
+      // Select model strategy based on selected model
       final strategy = await _modelManager.selectStrategy(
-        forceOffline: forceOffline,
+        modelType: state.selectedModel,
       );
 
       state = state.copyWith(
-        isOfflineMode: forceOffline,
         modelName: strategy.modelName,
       );
 
@@ -94,6 +99,9 @@ class BenchmarkController extends _$BenchmarkController {
           );
           return;
         }
+      } else if (strategy is EmbeddedModelStrategy) {
+        // Extract embedded model from assets
+        modelPath = await _modelManager.extractEmbeddedModel(strategy);
       } else {
         modelPath = await strategy.getModelPath();
       }
@@ -112,7 +120,7 @@ class BenchmarkController extends _$BenchmarkController {
 
       await _llamaService.runInference(
         'Write a short story about artificial intelligence:',
-        maxTokens: 100,
+        maxTokens: 50,
       );
 
       // Save result
@@ -130,11 +138,14 @@ class BenchmarkController extends _$BenchmarkController {
 
   /// Handle incoming tokens
   void _onTokenReceived(TokenEvent event) {
-    _tokensGenerated++;
+    // The event.token contains all generated text
+    // We need to estimate token count or get it from the event
+    // For now, estimate based on words (rough approximation)
+    final words = event.token.trim().split(RegExp(r'\s+'));
+    _tokensGenerated = words.length;
     
     // Update generated text
-    final newText = state.generatedText + event.token;
-    state = state.copyWith(generatedText: newText);
+    state = state.copyWith(generatedText: event.token);
 
     // Calculate speed
     if (_startTime != null) {

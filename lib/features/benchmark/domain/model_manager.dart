@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'model_strategy.dart';
+import 'model_type.dart';
 
 /// Manages model selection and downloading
 class ModelManager {
@@ -21,51 +22,51 @@ class ModelManager {
            result == ConnectivityResult.ethernet;
   }
 
-  /// Select the appropriate model strategy based on connectivity
+  /// Select the appropriate model strategy based on model type
   Future<ModelStrategy> selectStrategy({
-    bool forceOffline = false,
+    ModelType modelType = ModelType.tinyStories,
   }) async {
-    if (forceOffline) {
-      // For offline mode, check if TinyLlama is cached, otherwise download it
-      final cachedPath = await _getCachedModelPath('tinyllama-1.1b-q4_k_m.gguf');
-      if (cachedPath != null && await File(cachedPath).exists()) {
-        return _CachedModelStrategy(cachedPath, 'TinyLlama-1.1B (Nano)', 637.0);
-      }
-      
-      // Return strategy to download TinyLlama
-      return OnlineModelStrategy(
-        downloadUrl: 'https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf',
-        modelName: 'TinyLlama-1.1B (Nano)',
-        sizeMB: 637.0,
-      );
+    switch (modelType) {
+      case ModelType.tinyStories:
+        // Modelo embebido - siempre disponible
+        return EmbeddedModelStrategy();
+        
+      case ModelType.tinyLlama:
+        // Verificar si está cacheado
+        final cachedPath = await _getCachedModelPath(modelType.fileName);
+        if (cachedPath != null && await File(cachedPath).exists()) {
+          return _CachedModelStrategy(
+            cachedPath,
+            modelType.displayName,
+            modelType.sizeMB,
+          );
+        }
+        
+        // Retornar estrategia de descarga
+        return OnlineModelStrategy(
+          downloadUrl: modelType.downloadUrl,
+          modelName: modelType.displayName,
+          sizeMB: modelType.sizeMB,
+        );
+        
+      case ModelType.phi2:
+        // Verificar si está cacheado
+        final cachedPath = await _getCachedModelPath(modelType.fileName);
+        if (cachedPath != null && await File(cachedPath).exists()) {
+          return _CachedModelStrategy(
+            cachedPath,
+            modelType.displayName,
+            modelType.sizeMB,
+          );
+        }
+        
+        // Retornar estrategia de descarga
+        return OnlineModelStrategy(
+          downloadUrl: modelType.downloadUrl,
+          modelName: modelType.displayName,
+          sizeMB: modelType.sizeMB,
+        );
     }
-
-    final hasInternet = await hasConnectivity();
-    
-    if (hasInternet) {
-      // Check if online model is already cached
-      final cachedPath = await _getCachedModelPath('phi-2-q4_k_m.gguf');
-      if (cachedPath != null && await File(cachedPath).exists()) {
-        // Model already downloaded, use it
-        return _CachedModelStrategy(cachedPath, 'Phi-2 (Standard)', 1600.0);
-      }
-      
-      // Return online strategy for download
-      return OnlineModelStrategy(
-        downloadUrl: 'https://huggingface.co/TheBloke/phi-2-GGUF/resolve/main/phi-2.Q4_K_M.gguf',
-        modelName: 'Phi-2 (Standard)',
-        sizeMB: 1600.0,
-      );
-    }
-
-    // No internet, try to use cached TinyLlama
-    final cachedPath = await _getCachedModelPath('tinyllama-1.1b-q4_k_m.gguf');
-    if (cachedPath != null && await File(cachedPath).exists()) {
-      return _CachedModelStrategy(cachedPath, 'TinyLlama-1.1B (Nano)', 637.0);
-    }
-    
-    // No internet and no cached model - this will fail, but we return offline strategy
-    return OfflineModelStrategy();
   }
 
   /// Download and cache a model from OnlineModelStrategy
@@ -123,6 +124,31 @@ class ModelManager {
 
   /// Copy bundled asset model to writable location
   Future<String> extractAssetModel(OfflineModelStrategy strategy) async {
+    final assetPath = await strategy.getModelPath();
+    final cacheDir = await getApplicationDocumentsDirectory();
+    final fileName = assetPath.split('/').last;
+    final targetFile = File('${cacheDir.path}/models/$fileName');
+
+    // Check if already extracted
+    if (await targetFile.exists()) {
+      return targetFile.path;
+    }
+
+    // Create directory
+    await targetFile.parent.create(recursive: true);
+
+    // Copy from assets
+    final byteData = await rootBundle.load(assetPath);
+    final buffer = byteData.buffer;
+    await targetFile.writeAsBytes(
+      buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes),
+    );
+
+    return targetFile.path;
+  }
+
+  /// Copy embedded model from assets to writable location
+  Future<String> extractEmbeddedModel(EmbeddedModelStrategy strategy) async {
     final assetPath = await strategy.getModelPath();
     final cacheDir = await getApplicationDocumentsDirectory();
     final fileName = assetPath.split('/').last;

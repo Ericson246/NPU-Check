@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import '../domain/model_type.dart';
 
 part 'benchmark_state.freezed.dart';
 
@@ -11,6 +12,7 @@ class BenchmarkState with _$BenchmarkState {
     @Default(false) bool isOfflineMode,
     @Default(0.0) double ramUsageMB,
     @Default(BenchmarkStatus.idle) BenchmarkStatus status,
+    @Default(ModelType.tinyStories) ModelType selectedModel,
     String? errorMessage,
     String? modelName,
   }) = _BenchmarkState;

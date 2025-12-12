@@ -11,7 +11,22 @@ abstract class ModelStrategy {
   double get expectedSizeMB;
 }
 
-/// Strategy for loading a bundled offline model from assets
+/// Strategy for loading an embedded model from assets
+class EmbeddedModelStrategy implements ModelStrategy {
+  @override
+  String get modelName => 'TinyStories (Nano)';
+  
+  @override
+  double get expectedSizeMB => 7.7;
+  
+  @override
+  Future<String> getModelPath() async {
+    // Return asset path - will be copied by ModelManager
+    return 'assets/models/tinystories-3m-q2_k.gguf';
+  }
+}
+
+/// Strategy for loading a bundled offline model from assets (legacy)
 class OfflineModelStrategy implements ModelStrategy {
   @override
   String get modelName => 'TinyLlama-1.1B (Nano)';
@@ -21,9 +36,7 @@ class OfflineModelStrategy implements ModelStrategy {
   
   @override
   Future<String> getModelPath() async {
-    // In Flutter, assets are bundled in the APK/IPA
-    // We need to copy it to a writable location first
-    // For now, return the asset path (you'll need to implement asset copying)
+    // Legacy - not used anymore
     return 'assets/models/tinyllama-1.1b-q4_k_m.gguf';
   }
 }
