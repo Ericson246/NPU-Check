@@ -18,12 +18,15 @@ final _privateConstructorUsedError = UnsupportedError(
 mixin _$BenchmarkState {
   double get currentSpeed =>
       throw _privateConstructorUsedError; // tokens per second
+  double get averageSpeed =>
+      throw _privateConstructorUsedError; // average tokens per second
   String get generatedText => throw _privateConstructorUsedError;
   double get progress => throw _privateConstructorUsedError; // 0.0 to 1.0
   bool get isOfflineMode => throw _privateConstructorUsedError;
   double get ramUsageMB => throw _privateConstructorUsedError;
   BenchmarkStatus get status => throw _privateConstructorUsedError;
   ModelType get selectedModel => throw _privateConstructorUsedError;
+  bool get showTerminal => throw _privateConstructorUsedError;
   String? get errorMessage => throw _privateConstructorUsedError;
   String? get modelName => throw _privateConstructorUsedError;
   BenchmarkWorkload get workload => throw _privateConstructorUsedError;
@@ -41,12 +44,14 @@ abstract class $BenchmarkStateCopyWith<$Res> {
   @useResult
   $Res call(
       {double currentSpeed,
+      double averageSpeed,
       String generatedText,
       double progress,
       bool isOfflineMode,
       double ramUsageMB,
       BenchmarkStatus status,
       ModelType selectedModel,
+      bool showTerminal,
       String? errorMessage,
       String? modelName,
       BenchmarkWorkload workload});
@@ -66,12 +71,14 @@ class _$BenchmarkStateCopyWithImpl<$Res, $Val extends BenchmarkState>
   @override
   $Res call({
     Object? currentSpeed = null,
+    Object? averageSpeed = null,
     Object? generatedText = null,
     Object? progress = null,
     Object? isOfflineMode = null,
     Object? ramUsageMB = null,
     Object? status = null,
     Object? selectedModel = null,
+    Object? showTerminal = null,
     Object? errorMessage = freezed,
     Object? modelName = freezed,
     Object? workload = null,
@@ -80,6 +87,10 @@ class _$BenchmarkStateCopyWithImpl<$Res, $Val extends BenchmarkState>
       currentSpeed: null == currentSpeed
           ? _value.currentSpeed
           : currentSpeed // ignore: cast_nullable_to_non_nullable
+              as double,
+      averageSpeed: null == averageSpeed
+          ? _value.averageSpeed
+          : averageSpeed // ignore: cast_nullable_to_non_nullable
               as double,
       generatedText: null == generatedText
           ? _value.generatedText
@@ -105,6 +116,10 @@ class _$BenchmarkStateCopyWithImpl<$Res, $Val extends BenchmarkState>
           ? _value.selectedModel
           : selectedModel // ignore: cast_nullable_to_non_nullable
               as ModelType,
+      showTerminal: null == showTerminal
+          ? _value.showTerminal
+          : showTerminal // ignore: cast_nullable_to_non_nullable
+              as bool,
       errorMessage: freezed == errorMessage
           ? _value.errorMessage
           : errorMessage // ignore: cast_nullable_to_non_nullable
@@ -131,12 +146,14 @@ abstract class _$$BenchmarkStateImplCopyWith<$Res>
   @useResult
   $Res call(
       {double currentSpeed,
+      double averageSpeed,
       String generatedText,
       double progress,
       bool isOfflineMode,
       double ramUsageMB,
       BenchmarkStatus status,
       ModelType selectedModel,
+      bool showTerminal,
       String? errorMessage,
       String? modelName,
       BenchmarkWorkload workload});
@@ -154,12 +171,14 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? currentSpeed = null,
+    Object? averageSpeed = null,
     Object? generatedText = null,
     Object? progress = null,
     Object? isOfflineMode = null,
     Object? ramUsageMB = null,
     Object? status = null,
     Object? selectedModel = null,
+    Object? showTerminal = null,
     Object? errorMessage = freezed,
     Object? modelName = freezed,
     Object? workload = null,
@@ -168,6 +187,10 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
       currentSpeed: null == currentSpeed
           ? _value.currentSpeed
           : currentSpeed // ignore: cast_nullable_to_non_nullable
+              as double,
+      averageSpeed: null == averageSpeed
+          ? _value.averageSpeed
+          : averageSpeed // ignore: cast_nullable_to_non_nullable
               as double,
       generatedText: null == generatedText
           ? _value.generatedText
@@ -193,6 +216,10 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
           ? _value.selectedModel
           : selectedModel // ignore: cast_nullable_to_non_nullable
               as ModelType,
+      showTerminal: null == showTerminal
+          ? _value.showTerminal
+          : showTerminal // ignore: cast_nullable_to_non_nullable
+              as bool,
       errorMessage: freezed == errorMessage
           ? _value.errorMessage
           : errorMessage // ignore: cast_nullable_to_non_nullable
@@ -214,12 +241,14 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
 class _$BenchmarkStateImpl implements _BenchmarkState {
   const _$BenchmarkStateImpl(
       {this.currentSpeed = 0.0,
+      this.averageSpeed = 0.0,
       this.generatedText = '',
       this.progress = 0.0,
       this.isOfflineMode = false,
       this.ramUsageMB = 0.0,
       this.status = BenchmarkStatus.idle,
       this.selectedModel = ModelType.tinyStories,
+      this.showTerminal = false,
       this.errorMessage,
       this.modelName,
       this.workload = BenchmarkWorkload.standard});
@@ -228,6 +257,10 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
   @JsonKey()
   final double currentSpeed;
 // tokens per second
+  @override
+  @JsonKey()
+  final double averageSpeed;
+// average tokens per second
   @override
   @JsonKey()
   final String generatedText;
@@ -248,6 +281,9 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
   @JsonKey()
   final ModelType selectedModel;
   @override
+  @JsonKey()
+  final bool showTerminal;
+  @override
   final String? errorMessage;
   @override
   final String? modelName;
@@ -257,7 +293,7 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
 
   @override
   String toString() {
-    return 'BenchmarkState(currentSpeed: $currentSpeed, generatedText: $generatedText, progress: $progress, isOfflineMode: $isOfflineMode, ramUsageMB: $ramUsageMB, status: $status, selectedModel: $selectedModel, errorMessage: $errorMessage, modelName: $modelName, workload: $workload)';
+    return 'BenchmarkState(currentSpeed: $currentSpeed, averageSpeed: $averageSpeed, generatedText: $generatedText, progress: $progress, isOfflineMode: $isOfflineMode, ramUsageMB: $ramUsageMB, status: $status, selectedModel: $selectedModel, showTerminal: $showTerminal, errorMessage: $errorMessage, modelName: $modelName, workload: $workload)';
   }
 
   @override
@@ -267,6 +303,8 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
             other is _$BenchmarkStateImpl &&
             (identical(other.currentSpeed, currentSpeed) ||
                 other.currentSpeed == currentSpeed) &&
+            (identical(other.averageSpeed, averageSpeed) ||
+                other.averageSpeed == averageSpeed) &&
             (identical(other.generatedText, generatedText) ||
                 other.generatedText == generatedText) &&
             (identical(other.progress, progress) ||
@@ -278,6 +316,8 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
             (identical(other.status, status) || other.status == status) &&
             (identical(other.selectedModel, selectedModel) ||
                 other.selectedModel == selectedModel) &&
+            (identical(other.showTerminal, showTerminal) ||
+                other.showTerminal == showTerminal) &&
             (identical(other.errorMessage, errorMessage) ||
                 other.errorMessage == errorMessage) &&
             (identical(other.modelName, modelName) ||
@@ -290,12 +330,14 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
   int get hashCode => Object.hash(
       runtimeType,
       currentSpeed,
+      averageSpeed,
       generatedText,
       progress,
       isOfflineMode,
       ramUsageMB,
       status,
       selectedModel,
+      showTerminal,
       errorMessage,
       modelName,
       workload);
@@ -311,12 +353,14 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
 abstract class _BenchmarkState implements BenchmarkState {
   const factory _BenchmarkState(
       {final double currentSpeed,
+      final double averageSpeed,
       final String generatedText,
       final double progress,
       final bool isOfflineMode,
       final double ramUsageMB,
       final BenchmarkStatus status,
       final ModelType selectedModel,
+      final bool showTerminal,
       final String? errorMessage,
       final String? modelName,
       final BenchmarkWorkload workload}) = _$BenchmarkStateImpl;
@@ -324,6 +368,8 @@ abstract class _BenchmarkState implements BenchmarkState {
   @override
   double get currentSpeed;
   @override // tokens per second
+  double get averageSpeed;
+  @override // average tokens per second
   String get generatedText;
   @override
   double get progress;
@@ -335,6 +381,8 @@ abstract class _BenchmarkState implements BenchmarkState {
   BenchmarkStatus get status;
   @override
   ModelType get selectedModel;
+  @override
+  bool get showTerminal;
   @override
   String? get errorMessage;
   @override

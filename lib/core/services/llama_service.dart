@@ -116,12 +116,11 @@ class LlamaService {
     mainSendPort.send(isolateReceivePort.sendPort);
 
     // Set up the native callback
-    // TODO: Implement proper callback mechanism for token streaming
-    // final callbackPointer = ffi.Pointer.fromFunction<TokenCallbackNative>(
-    //   _nativeTokenCallback,
-    //   // Default value for void return
-    // );
-    // bindings.setTokenCallback(callbackPointer);
+    _isolateSendPort = mainSendPort;
+    final callbackPointer = ffi.Pointer.fromFunction<TokenCallbackNative>(
+      _nativeTokenCallback,
+    );
+    bindings.setTokenCallback?.call(callbackPointer);
 
     // Listen for messages from main thread
     isolateReceivePort.listen((message) {
@@ -167,10 +166,13 @@ class LlamaService {
     });
   }
 
+  static SendPort? _isolateSendPort;
+
   /// Native callback wrapper (must be top-level or static)
   static void _nativeTokenCallback(ffi.Pointer<ffi.Char> token, int timeMs) {
-    // This gets called from C++
-    // For now, we'll rely on the native code to batch tokens
-    // and return them all at once rather than streaming
+    if (_isolateSendPort != null) {
+      final tokenStr = token.cast<Utf8>().toDartString();
+      _isolateSendPort!.send(TokenEvent(tokenStr, timeMs));
+    }
   }
 }

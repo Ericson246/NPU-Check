@@ -74,6 +74,7 @@ class BenchmarkController extends _$BenchmarkController {
         errorMessage: null,
         generatedText: '',
         currentSpeed: 0.0,
+        averageSpeed: 0.0,
       );
 
       // Initialize service
@@ -190,22 +191,25 @@ class BenchmarkController extends _$BenchmarkController {
 
   /// Handle incoming tokens
   void _onTokenReceived(TokenEvent event) {
-    // 1. Update the displayed text
-    state = state.copyWith(generatedText: event.token);
+    if (state.status != BenchmarkStatus.running) return;
 
-    // 2. Estimate token count
-    // This is a rough approximation. For accurate token counting, a proper
-    // tokenizer would be needed. Here, we assume ~4 chars per token.
-    final estimatedTokens = (event.token.length / 4).round();
-    _tokensGenerated = estimatedTokens;
+    // 1. Update the displayed text (append token)
+    final updatedText = state.generatedText + event.token;
+    _tokensGenerated++;
 
-    // 3. Calculate speed & progress
+    // 2. Calculate speed & progress
     if (_startTime != null && _tokensGenerated > 0) {
       final now = DateTime.now();
       final elapsed = now.difference(_startTime!);
       
       if (elapsed.inMilliseconds > 0) {
-        final tokensPerSecond = _tokensGenerated / elapsed.inMilliseconds * 1000;
+        // Average speed over the entire benchmark
+        final averageSpeed = _tokensGenerated / elapsed.inMilliseconds * 1000;
+        
+        // For "current speed", we could use a window, but for now 
+        // let's just use the average or a slightly more reactive version
+        // To make it feel "alive", we can add a bit of jitter or use average
+        final currentSpeed = averageSpeed; 
         
         double progress;
         if (state.workload.isTimeBased) {
@@ -217,13 +221,15 @@ class BenchmarkController extends _$BenchmarkController {
         }
         
         state = state.copyWith(
-          currentSpeed: tokensPerSecond,
+          generatedText: updatedText,
+          currentSpeed: currentSpeed,
+          averageSpeed: averageSpeed,
           progress: progress.clamp(0.0, 1.0),
         );
       }
     }
 
-    // 4. Update RAM usage (placeholder)
+    // 3. Update RAM usage (placeholder)
     final ramUsage = _llamaService?.getRamUsage() ?? 0.0;
     state = state.copyWith(ramUsageMB: ramUsage);
   }
@@ -255,11 +261,16 @@ class BenchmarkController extends _$BenchmarkController {
       timestamp: DateTime.now(),
       deviceModel: deviceModel,
       aiModelName: state.modelName ?? 'Unknown',
-      tokensPerSecond: state.currentSpeed,
+      tokensPerSecond: state.averageSpeed,
       ramUsageMB: state.ramUsageMB,
     );
 
     await _repository.saveBenchmark(result);
+  }
+
+  /// Toggle terminal visibility
+  void toggleTerminal() {
+    state = state.copyWith(showTerminal: !state.showTerminal);
   }
 
   /// Stop the benchmark
