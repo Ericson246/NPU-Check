@@ -161,6 +161,7 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_runInference(
 
         // Sample next token
         // idx -1 means sample from the last token in the context
+        if (!g_ctx) break;
         llama_token new_token = llama_sampler_sample(smpl, g_ctx, -1);
 
         // Check for EOS
@@ -192,11 +193,7 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_runInference(
 
         // Prepare for next iteration
         llama_batch batch = llama_batch_get_one(&new_token, 1);
-        // Important: set the correct position for the new token
-        // Prompt took 0 to n_tokens-1, so next is n_tokens + i
-        // Note: llama_batch_get_one sets pos[0] = 0, so we override it
-        // Accessing underlying pos array: batch.pos is a pointer
-        batch.pos[0] = n_tokens + i;
+        // Note: Position is tracked automatically since batch.pos is NULL
 
         if (llama_decode(g_ctx, batch)) {
             LOGE("Failed to evaluate token");
@@ -321,7 +318,6 @@ int32_t run_inference(const char* prompt, int32_t max_tokens) {
     LOGI("FFI: Running inference with prompt: %s", prompt);
 
     // Clear KV cache to ensure fresh start
-    // Clear KV cache to ensure fresh start
     llama_memory_clear(llama_get_memory(g_ctx), true);
     
     // Clear previous generated text
@@ -358,6 +354,10 @@ int32_t run_inference(const char* prompt, int32_t max_tokens) {
     for (int i = 0; i < max_tokens; i++) {
         // Sample next token
         auto* logits = llama_get_logits_ith(g_ctx, -1);
+        if (!logits) {
+            LOGE("FFI: Failed to get logits");
+            break;
+        }
         auto n_vocab = llama_vocab_n_tokens(vocab);
         
         // Simple greedy sampling
@@ -377,9 +377,16 @@ int32_t run_inference(const char* prompt, int32_t max_tokens) {
         }
         
         // Convert token to text
-        const char* token_str = llama_vocab_get_text(vocab, new_token);
-        if (token_str && strlen(token_str) > 0) {
-            generated_text += token_str;
+        char token_text[256];
+        int len = llama_token_to_piece(vocab, new_token, token_text, sizeof(token_text), 0, false);
+        if (len < 0) {
+            len = 0;
+        } else {
+            token_text[len] = '\0';
+        }
+
+        if (len > 0) {
+            generated_text += token_text;
             
             // Call callback if set
             if (g_token_callback) {
@@ -387,15 +394,13 @@ int32_t run_inference(const char* prompt, int32_t max_tokens) {
                 auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                     now.time_since_epoch()
                 ).count();
-                g_token_callback(token_str, ms);
+                g_token_callback(token_text, ms);
             }
         }
         
         // Prepare next batch
         batch = llama_batch_get_one(&new_token, 1);
-        
-        // Update position for the new token (continuation)
-        batch.pos[0] = n_prompt_tokens + i;
+        // Note: Position is tracked automatically since batch.pos is NULL
 
         if (llama_decode(g_ctx, batch) != 0) {
             LOGE("FFI: Failed to decode token step %d", i);
