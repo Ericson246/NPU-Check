@@ -26,114 +26,120 @@ class HomeScreen extends ConsumerWidget {
       body: Container(
         decoration: BoxDecoration(gradient: AppTheme.darkGradient),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Column(
-              children: [
-                // Header with connectivity indicator
-                _buildHeader(benchmarkState),
-                
-                const SizedBox(height: 10),
-                
-                // Model Selector
-                ModelSelectorWidget(
-                  selectedModel: benchmarkState.selectedModel,
-                  onModelSelected: (model) {
-                    ref.read(benchmarkControllerProvider.notifier).selectModel(model);
-                  },
-                ),
-                
-                const SizedBox(height: 10),
-                
-                // Workload Selector
-                _buildWorkloadSelector(ref, benchmarkState),
-
-                const Spacer(flex: 1),
-                Expanded(
-                  flex: 8,
-                  child: SpeedometerWidget(
-                    tokensPerSecond: benchmarkState.currentSpeed,
-                    maxSpeed: 100.0,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with connectivity indicator
+                  _buildHeader(benchmarkState),
+                  
+                  const SizedBox(height: 10),
+                  
+                  // Model Selector
+                  ModelSelectorWidget(
+                    selectedModel: benchmarkState.selectedModel,
+                    downloadedModels: benchmarkState.downloadedModels,
+                    onModelSelected: (model) {
+                      ref.read(benchmarkControllerProvider.notifier).selectModel(model);
+                    },
                   ),
-                ),
-                const SizedBox(height: 10),
-                
-                // RAM Usage
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildMetricCard(
-                      'RAM USAGE',
-                      '${benchmarkState.ramUsageMB.toStringAsFixed(1)} MB',
-                      AppTheme.neonMagenta,
+                  
+                  const SizedBox(height: 10),
+                  
+                  // Workload Selector
+                  _buildWorkloadSelector(ref, benchmarkState),
+
+                  // Speedometer with fixed height since Spacer won't work inside scroll
+                  SizedBox(
+                    height: 250,
+                    child: SpeedometerWidget(
+                      tokensPerSecond: benchmarkState.currentSpeed,
+                      maxSpeed: 100.0,
                     ),
-                  ],
-                ),
-                const Spacer(flex: 1),
-                
-                // Progress Bar
-                if (benchmarkState.status == BenchmarkStatus.running || 
-                    benchmarkState.status == BenchmarkStatus.downloading)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                  
+                  const SizedBox(height: 10),
+                  
+                  // RAM Usage
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            benchmarkState.status == BenchmarkStatus.downloading
-                                ? 'DOWNLOADING MODEL...'
-                                : 'BENCHMARK PROGRESS',
-                            style: const TextStyle(
-                              fontFamily: 'RobotoMono',
-                              fontSize: 10,
-                              color: AppTheme.neonCyan,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                          Text(
-                            '${(benchmarkState.progress * 100).toStringAsFixed(0)}%',
-                            style: const TextStyle(
-                              fontFamily: 'RobotoMono',
-                              fontSize: 10,
-                              color: AppTheme.neonCyan,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: benchmarkState.progress,
-                          backgroundColor: AppTheme.darkBgTertiary,
-                          valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.neonCyan),
-                          minHeight: 6,
-                        ),
+                      _buildMetricCard(
+                        'RAM USAGE',
+                        '${benchmarkState.ramUsageMB.toStringAsFixed(1)} MB',
+                        AppTheme.neonMagenta,
                       ),
                     ],
                   ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Progress Bar
+                  if (benchmarkState.status == BenchmarkStatus.running || 
+                      benchmarkState.status == BenchmarkStatus.downloading)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              benchmarkState.status == BenchmarkStatus.downloading
+                                  ? 'DOWNLOADING MODEL...'
+                                  : 'BENCHMARK PROGRESS',
+                              style: const TextStyle(
+                                fontFamily: 'RobotoMono',
+                                fontSize: 10,
+                                color: AppTheme.neonCyan,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            Text(
+                              '${(benchmarkState.progress * 100).toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                fontFamily: 'RobotoMono',
+                                fontSize: 10,
+                                color: AppTheme.neonCyan,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: benchmarkState.progress,
+                            backgroundColor: AppTheme.darkBgTertiary,
+                            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.neonCyan),
+                            minHeight: 6,
+                          ),
+                        ),
+                        const SizedBox(height: 15),
+                      ],
+                    ),
 
-                const SizedBox(height: 10),
-
-                // Collapsible Terminal
-                _buildTerminal(ref, benchmarkState),
-                
-                const SizedBox(height: 10),
-                
-                // Status message
-                if (benchmarkState.status != BenchmarkStatus.idle && 
-                    benchmarkState.status != BenchmarkStatus.completed)
-                   _buildStatusMessage(benchmarkState),
-                
-                const SizedBox(height: 10),
-                
-                // Control buttons
-                _buildControls(context, ref, benchmarkState),
-                
-                const SizedBox(height: 20),
-              ],
+                  // Collapsible Terminal
+                  _buildTerminal(ref, benchmarkState),
+                  
+                  const SizedBox(height: 15),
+                  
+                  // Status message
+                  if (benchmarkState.status != BenchmarkStatus.idle && 
+                      benchmarkState.status != BenchmarkStatus.completed)
+                     Padding(
+                       padding: const EdgeInsets.only(bottom: 10),
+                       child: _buildStatusMessage(benchmarkState),
+                     ),
+                  
+                  // Control buttons
+                  _buildControls(context, ref, benchmarkState),
+                  
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
           ),
         ),
@@ -266,8 +272,13 @@ class HomeScreen extends ConsumerWidget {
         color = AppTheme.neonGreen;
         break;
       case BenchmarkStatus.error:
-        message = 'ERROR: ${state.errorMessage ?? "Unknown error"}';
-        color = AppTheme.neonOrange;
+        if (state.errorMessage == 'STOPPED BY USER') {
+          message = 'BENCHMARK STOPPED BY USER';
+          color = AppTheme.neonOrange;
+        } else {
+          message = 'ERROR: ${state.errorMessage ?? "Unknown error"}';
+          color = AppTheme.neonOrange;
+        }
         break;
       default:
         return const SizedBox.shrink();
@@ -489,7 +500,7 @@ class HomeScreen extends ConsumerWidget {
               ),
               _buildLargeResultMetric(
                 'RAM PEAK',
-                state.ramUsageMB.toStringAsFixed(0),
+                state.ramPeakMB.toStringAsFixed(0),
                 'MB',
                 AppTheme.neonMagenta,
               ),

@@ -24,7 +24,7 @@ final benchmarkRepositoryProvider =
 
 typedef BenchmarkRepositoryRef = AutoDisposeProviderRef<BenchmarkRepository>;
 String _$benchmarkControllerHash() =>
-    r'31502d9dafb048746a38d5cdb951f1ac94be2026';
+    r'cd1b8db44f3448c8bd28bf5fa7679ac777cca063';
 
 /// See also [BenchmarkController].
 @ProviderFor(BenchmarkController)

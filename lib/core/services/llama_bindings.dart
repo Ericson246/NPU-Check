@@ -22,12 +22,16 @@ typedef SetTokenCallbackDart = void Function(Pointer<NativeFunction<TokenCallbac
 typedef GetGeneratedTextNative = Pointer<Char> Function();
 typedef GetGeneratedTextDart = Pointer<Char> Function();
 
+typedef StopInferenceNative = Void Function();
+typedef StopInferenceDart = void Function();
+
 class LlamaBindings {
   late final DynamicLibrary _dylib;
   late final LoadModelDart loadModel;
   late final RunInferenceDart runInference;
   late final DisposeModelDart disposeModel;
   late final GetGeneratedTextDart getGeneratedText;
+  late final StopInferenceDart stopInference;
   SetTokenCallbackDart? setTokenCallback;
 
   LlamaBindings() {
@@ -55,6 +59,10 @@ class LlamaBindings {
     
     getGeneratedText = _dylib
         .lookup<NativeFunction<GetGeneratedTextNative>>('get_generated_text')
+        .asFunction();
+
+    stopInference = _dylib
+        .lookup<NativeFunction<StopInferenceNative>>('stop_inference')
         .asFunction();
     
     // setTokenCallback is optional for now

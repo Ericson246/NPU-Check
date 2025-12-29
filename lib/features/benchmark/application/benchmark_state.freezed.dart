@@ -24,12 +24,14 @@ mixin _$BenchmarkState {
   double get progress => throw _privateConstructorUsedError; // 0.0 to 1.0
   bool get isOfflineMode => throw _privateConstructorUsedError;
   double get ramUsageMB => throw _privateConstructorUsedError;
+  double get ramPeakMB => throw _privateConstructorUsedError;
   BenchmarkStatus get status => throw _privateConstructorUsedError;
   ModelType get selectedModel => throw _privateConstructorUsedError;
   bool get showTerminal => throw _privateConstructorUsedError;
   String? get errorMessage => throw _privateConstructorUsedError;
   String? get modelName => throw _privateConstructorUsedError;
   BenchmarkWorkload get workload => throw _privateConstructorUsedError;
+  List<ModelType> get downloadedModels => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
   $BenchmarkStateCopyWith<BenchmarkState> get copyWith =>
@@ -49,12 +51,14 @@ abstract class $BenchmarkStateCopyWith<$Res> {
       double progress,
       bool isOfflineMode,
       double ramUsageMB,
+      double ramPeakMB,
       BenchmarkStatus status,
       ModelType selectedModel,
       bool showTerminal,
       String? errorMessage,
       String? modelName,
-      BenchmarkWorkload workload});
+      BenchmarkWorkload workload,
+      List<ModelType> downloadedModels});
 }
 
 /// @nodoc
@@ -76,12 +80,14 @@ class _$BenchmarkStateCopyWithImpl<$Res, $Val extends BenchmarkState>
     Object? progress = null,
     Object? isOfflineMode = null,
     Object? ramUsageMB = null,
+    Object? ramPeakMB = null,
     Object? status = null,
     Object? selectedModel = null,
     Object? showTerminal = null,
     Object? errorMessage = freezed,
     Object? modelName = freezed,
     Object? workload = null,
+    Object? downloadedModels = null,
   }) {
     return _then(_value.copyWith(
       currentSpeed: null == currentSpeed
@@ -108,6 +114,10 @@ class _$BenchmarkStateCopyWithImpl<$Res, $Val extends BenchmarkState>
           ? _value.ramUsageMB
           : ramUsageMB // ignore: cast_nullable_to_non_nullable
               as double,
+      ramPeakMB: null == ramPeakMB
+          ? _value.ramPeakMB
+          : ramPeakMB // ignore: cast_nullable_to_non_nullable
+              as double,
       status: null == status
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
@@ -132,6 +142,10 @@ class _$BenchmarkStateCopyWithImpl<$Res, $Val extends BenchmarkState>
           ? _value.workload
           : workload // ignore: cast_nullable_to_non_nullable
               as BenchmarkWorkload,
+      downloadedModels: null == downloadedModels
+          ? _value.downloadedModels
+          : downloadedModels // ignore: cast_nullable_to_non_nullable
+              as List<ModelType>,
     ) as $Val);
   }
 }
@@ -151,12 +165,14 @@ abstract class _$$BenchmarkStateImplCopyWith<$Res>
       double progress,
       bool isOfflineMode,
       double ramUsageMB,
+      double ramPeakMB,
       BenchmarkStatus status,
       ModelType selectedModel,
       bool showTerminal,
       String? errorMessage,
       String? modelName,
-      BenchmarkWorkload workload});
+      BenchmarkWorkload workload,
+      List<ModelType> downloadedModels});
 }
 
 /// @nodoc
@@ -176,12 +192,14 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
     Object? progress = null,
     Object? isOfflineMode = null,
     Object? ramUsageMB = null,
+    Object? ramPeakMB = null,
     Object? status = null,
     Object? selectedModel = null,
     Object? showTerminal = null,
     Object? errorMessage = freezed,
     Object? modelName = freezed,
     Object? workload = null,
+    Object? downloadedModels = null,
   }) {
     return _then(_$BenchmarkStateImpl(
       currentSpeed: null == currentSpeed
@@ -208,6 +226,10 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
           ? _value.ramUsageMB
           : ramUsageMB // ignore: cast_nullable_to_non_nullable
               as double,
+      ramPeakMB: null == ramPeakMB
+          ? _value.ramPeakMB
+          : ramPeakMB // ignore: cast_nullable_to_non_nullable
+              as double,
       status: null == status
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
@@ -232,6 +254,10 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
           ? _value.workload
           : workload // ignore: cast_nullable_to_non_nullable
               as BenchmarkWorkload,
+      downloadedModels: null == downloadedModels
+          ? _value._downloadedModels
+          : downloadedModels // ignore: cast_nullable_to_non_nullable
+              as List<ModelType>,
     ));
   }
 }
@@ -246,12 +272,15 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
       this.progress = 0.0,
       this.isOfflineMode = false,
       this.ramUsageMB = 0.0,
+      this.ramPeakMB = 0.0,
       this.status = BenchmarkStatus.idle,
       this.selectedModel = ModelType.tinyStories,
       this.showTerminal = false,
       this.errorMessage,
       this.modelName,
-      this.workload = BenchmarkWorkload.standard});
+      this.workload = BenchmarkWorkload.standard,
+      final List<ModelType> downloadedModels = const []})
+      : _downloadedModels = downloadedModels;
 
   @override
   @JsonKey()
@@ -276,6 +305,9 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
   final double ramUsageMB;
   @override
   @JsonKey()
+  final double ramPeakMB;
+  @override
+  @JsonKey()
   final BenchmarkStatus status;
   @override
   @JsonKey()
@@ -290,10 +322,19 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
   @override
   @JsonKey()
   final BenchmarkWorkload workload;
+  final List<ModelType> _downloadedModels;
+  @override
+  @JsonKey()
+  List<ModelType> get downloadedModels {
+    if (_downloadedModels is EqualUnmodifiableListView)
+      return _downloadedModels;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_downloadedModels);
+  }
 
   @override
   String toString() {
-    return 'BenchmarkState(currentSpeed: $currentSpeed, averageSpeed: $averageSpeed, generatedText: $generatedText, progress: $progress, isOfflineMode: $isOfflineMode, ramUsageMB: $ramUsageMB, status: $status, selectedModel: $selectedModel, showTerminal: $showTerminal, errorMessage: $errorMessage, modelName: $modelName, workload: $workload)';
+    return 'BenchmarkState(currentSpeed: $currentSpeed, averageSpeed: $averageSpeed, generatedText: $generatedText, progress: $progress, isOfflineMode: $isOfflineMode, ramUsageMB: $ramUsageMB, ramPeakMB: $ramPeakMB, status: $status, selectedModel: $selectedModel, showTerminal: $showTerminal, errorMessage: $errorMessage, modelName: $modelName, workload: $workload, downloadedModels: $downloadedModels)';
   }
 
   @override
@@ -313,6 +354,8 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
                 other.isOfflineMode == isOfflineMode) &&
             (identical(other.ramUsageMB, ramUsageMB) ||
                 other.ramUsageMB == ramUsageMB) &&
+            (identical(other.ramPeakMB, ramPeakMB) ||
+                other.ramPeakMB == ramPeakMB) &&
             (identical(other.status, status) || other.status == status) &&
             (identical(other.selectedModel, selectedModel) ||
                 other.selectedModel == selectedModel) &&
@@ -323,7 +366,9 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
             (identical(other.modelName, modelName) ||
                 other.modelName == modelName) &&
             (identical(other.workload, workload) ||
-                other.workload == workload));
+                other.workload == workload) &&
+            const DeepCollectionEquality()
+                .equals(other._downloadedModels, _downloadedModels));
   }
 
   @override
@@ -335,12 +380,14 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
       progress,
       isOfflineMode,
       ramUsageMB,
+      ramPeakMB,
       status,
       selectedModel,
       showTerminal,
       errorMessage,
       modelName,
-      workload);
+      workload,
+      const DeepCollectionEquality().hash(_downloadedModels));
 
   @JsonKey(ignore: true)
   @override
@@ -358,12 +405,14 @@ abstract class _BenchmarkState implements BenchmarkState {
       final double progress,
       final bool isOfflineMode,
       final double ramUsageMB,
+      final double ramPeakMB,
       final BenchmarkStatus status,
       final ModelType selectedModel,
       final bool showTerminal,
       final String? errorMessage,
       final String? modelName,
-      final BenchmarkWorkload workload}) = _$BenchmarkStateImpl;
+      final BenchmarkWorkload workload,
+      final List<ModelType> downloadedModels}) = _$BenchmarkStateImpl;
 
   @override
   double get currentSpeed;
@@ -378,6 +427,8 @@ abstract class _BenchmarkState implements BenchmarkState {
   @override
   double get ramUsageMB;
   @override
+  double get ramPeakMB;
+  @override
   BenchmarkStatus get status;
   @override
   ModelType get selectedModel;
@@ -389,6 +440,8 @@ abstract class _BenchmarkState implements BenchmarkState {
   String? get modelName;
   @override
   BenchmarkWorkload get workload;
+  @override
+  List<ModelType> get downloadedModels;
   @override
   @JsonKey(ignore: true)
   _$$BenchmarkStateImplCopyWith<_$BenchmarkStateImpl> get copyWith =>

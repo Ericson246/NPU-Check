@@ -8,6 +8,7 @@
 #include <chrono>
 
 // llama.cpp includes
+#include <atomic>
 #include "llama.h"
 
 #define LOG_TAG "NeuralGauge"
@@ -19,6 +20,7 @@ static llama_model* g_model = nullptr;
 static llama_context* g_ctx = nullptr;
 static bool g_is_loaded = false;
 static std::string g_generated_text; // Store generated text
+static std::atomic<bool> g_stop_inference{false};
 
 // Token callback function pointer (set from Dart)
 typedef void (*TokenCallback)(const char* token, int64_t time_ms);
@@ -105,6 +107,7 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_runInference(
     jstring prompt_str,
     jint max_tokens
 ) {
+    g_stop_inference = false;
     if (!g_is_loaded || !g_ctx) {
         LOGE("Model not loaded");
         return -1;
@@ -157,6 +160,7 @@ Java_com_neuralgauge_neural_1gauge_NativeLib_runInference(
     // Generate tokens
     int n_generated = 0;
     for (int i = 0; i < max_tokens; i++) {
+        if (g_stop_inference) break;
         auto start_time = std::chrono::high_resolution_clock::now();
 
         // Sample next token
@@ -310,6 +314,7 @@ int32_t load_model(const char* model_path) {
  * Returns: number of tokens generated, or -1 on error
  */
 int32_t run_inference(const char* prompt, int32_t max_tokens) {
+    g_stop_inference = false;
     if (!g_is_loaded || !g_model || !g_ctx) {
         LOGE("FFI: Model not loaded");
         return -1;
@@ -352,6 +357,7 @@ int32_t run_inference(const char* prompt, int32_t max_tokens) {
     std::string generated_text;
     
     for (int i = 0; i < max_tokens; i++) {
+        if (g_stop_inference) break;
         // Sample next token
         auto* logits = llama_get_logits_ith(g_ctx, -1);
         if (!logits) {
@@ -452,6 +458,13 @@ void set_token_callback(TokenCallback callback) {
  */
 const char* get_generated_text() {
     return g_generated_text.c_str();
+}
+
+/**
+ * Stop inference - FFI version for Dart
+ */
+void stop_inference() {
+    g_stop_inference = true;
 }
 
 } // extern "C"

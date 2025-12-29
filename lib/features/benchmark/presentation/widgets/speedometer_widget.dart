@@ -27,7 +27,7 @@ class _SpeedometerWidgetState extends State<SpeedometerWidget>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 150),
+      duration: const Duration(milliseconds: 50),
       vsync: this,
     );
     _animation = Tween<double>(begin: 0, end: widget.tokensPerSecond)

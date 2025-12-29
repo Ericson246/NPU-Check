@@ -58,9 +58,9 @@ extension ModelTypeExtension on ModelType {
       case ModelType.tinyStories:
         return 'tinystories-3m-q2_k.gguf';
       case ModelType.tinyLlama:
-        return 'tinyllama-1.1b-q4_k_m.gguf';
+        return 'tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf';
       case ModelType.phi2:
-        return 'phi-2-q4_k_m.gguf';
+        return 'phi-2.Q4_K_M.gguf';
     }
   }
 }
