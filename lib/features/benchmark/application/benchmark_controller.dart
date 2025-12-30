@@ -25,6 +25,7 @@ class BenchmarkController extends _$BenchmarkController {
   DateTime? _lastUpdate;
   final StringBuffer _generatedBuffer = StringBuffer();
   final Map<ModelType, Future<String?>> _activeDownloads = {};
+  Timer? _durationTimer;
 
   @override
   BenchmarkState build() {
@@ -77,6 +78,8 @@ class BenchmarkController extends _$BenchmarkController {
     
     await _llamaService?.dispose();
     _llamaService = null;
+    _durationTimer?.cancel();
+    _durationTimer = null;
   }
 
   /// Select a model
@@ -153,27 +156,28 @@ class BenchmarkController extends _$BenchmarkController {
       );
 
       _tokensGenerated = 0;
-      _startTime = DateTime.now();
+      _startTime = null; // We will set this when the FIRST token arrives
       
       final workload = state.workload;
-      Timer? durationTimer;
-
+      
       if (workload.isTimeBased) {
-        // For time-based, we run one large pass and stop it when timer fires
-        durationTimer = Timer(workload.minDuration, () {
-          if (state.status == BenchmarkStatus.running) {
-            _llamaService?.stopInference();
+        // We loop until the time is up, so if the model finishes one story, it starts another
+        // away from the stuttering 16-token loop, but ensuring the test lasts the full duration.
+        while (state.status == BenchmarkStatus.running) {
+          await _runOnePass(maxTokens: 2048);
+          
+          // Check if the timer fired or if we reached the end naturally after the time
+          if (_startTime != null && 
+              DateTime.now().difference(_startTime!) >= workload.minDuration) {
+            break;
           }
-        });
-        
-        // Large token limit for time-based mode
-        await _runOnePass(maxTokens: 10000); 
+        }
       } else {
         // Token-based (single pass)
         await _runOnePass(maxTokens: workload.tokens);
       }
 
-      durationTimer?.cancel();
+      _durationTimer?.cancel();
 
       // Check if we were cancelled during the loop
       if (state.status == BenchmarkStatus.running) {
@@ -225,11 +229,27 @@ class BenchmarkController extends _$BenchmarkController {
   void _onTokenReceived(TokenEvent event) {
     if (state.status != BenchmarkStatus.running) return;
 
+    final now = DateTime.now();
+
+    // Initialize start time on first token for 100% accuracy
+    if (_startTime == null) {
+      _startTime = now;
+      
+      // If it's time-based, start the countdown NOW
+      if (state.workload.isTimeBased) {
+        _durationTimer?.cancel();
+        _durationTimer = Timer(state.workload.minDuration, () {
+          if (state.status == BenchmarkStatus.running) {
+            _llamaService?.stopInference();
+          }
+        });
+      }
+    }
+
     // 1. Buffer the token efficiently
     _generatedBuffer.write(event.token);
     _tokensGenerated++;
     
-    final now = DateTime.now();
     _tokenWindow.add(now);
 
     // 2. Remove tokens older than 1 second for the "real-time" speed window
@@ -413,6 +433,9 @@ class BenchmarkController extends _$BenchmarkController {
       status: wasRunning ? BenchmarkStatus.error : BenchmarkStatus.idle,
       errorMessage: wasRunning ? 'STOPPED BY USER' : null,
     );
+
+    _modelManager.cancelActiveDownload();
+    _activeDownloads.clear();
 
     await _disposeService();
   }

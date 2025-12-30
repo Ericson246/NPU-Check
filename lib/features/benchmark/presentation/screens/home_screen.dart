@@ -272,11 +272,14 @@ class HomeScreen extends ConsumerWidget {
         color = AppTheme.neonGreen;
         break;
       case BenchmarkStatus.error:
+        final rawError = state.errorMessage ?? "Unknown error";
+        final cleanError = rawError.replaceAll('Exception: ', '').replaceAll('Failed to prepare model: ', '');
+        
         if (state.errorMessage == 'STOPPED BY USER') {
           message = 'BENCHMARK STOPPED BY USER';
           color = AppTheme.neonOrange;
         } else {
-          message = 'ERROR: ${state.errorMessage ?? "Unknown error"}';
+          message = 'ERROR: $cleanError';
           color = AppTheme.neonOrange;
         }
         break;
@@ -328,32 +331,40 @@ class HomeScreen extends ConsumerWidget {
     BenchmarkState state,
   ) {
     final controller = ref.read(benchmarkControllerProvider.notifier);
-    final isRunning = state.status == BenchmarkStatus.running ||
-        state.status == BenchmarkStatus.downloading ||
-        state.status == BenchmarkStatus.loadingModel;
+    final isDownloading = state.status == BenchmarkStatus.downloading;
+    final isRunningOrLoading = state.status == BenchmarkStatus.running || 
+                               state.status == BenchmarkStatus.loadingModel;
+    final isActive = isDownloading || isRunningOrLoading;
+
+    String buttonText = 'START BENCHMARK';
+    if (isDownloading) {
+      buttonText = 'CANCEL DOWNLOAD';
+    } else if (isRunningOrLoading) {
+      buttonText = 'STOP BENCHMARK';
+    }
 
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () {
-          if (isRunning) {
+          if (isActive) {
             controller.stopBenchmark();
           } else {
             controller.startBenchmark();
           }
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: isRunning ? AppTheme.neonOrange : AppTheme.neonCyan,
+          backgroundColor: isActive ? AppTheme.neonOrange : AppTheme.neonCyan,
           disabledBackgroundColor: AppTheme.darkBgTertiary,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          shadowColor: isRunning ? AppTheme.neonOrange : AppTheme.neonCyan,
+          shadowColor: isActive ? AppTheme.neonOrange : AppTheme.neonCyan,
           elevation: 8,
         ),
         child: Text(
-          isRunning ? 'STOP BENCHMARK' : 'START BENCHMARK',
+          buttonText,
           style: const TextStyle(
             fontFamily: 'Orbitron',
             fontSize: 16,

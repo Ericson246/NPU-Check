@@ -14,6 +14,9 @@ class ModelManager {
   Stream<double>? _downloadProgress;
   Stream<double>? get downloadProgress => _downloadProgress;
 
+  http.Client? _activeClient;
+  bool _isCancelled = false;
+
   /// Check if device has internet connectivity
   Future<bool> hasConnectivity() async {
     final result = await _connectivity.checkConnectivity();
@@ -78,16 +81,20 @@ class ModelManager {
         return modelFile.path;
       }
 
+      _isCancelled = false;
+      _activeClient = http.Client();
+
       // Prepare request with Range header if partial file exists
       final request = http.Request('GET', Uri.parse(strategy.downloadUrl));
       if (existingBytes > 0) {
         request.headers['Range'] = 'bytes=$existingBytes-';
       }
 
-      final response = await request.send();
+      final response = await _activeClient!.send(request);
 
       // Handle 206 Partial Content or 200 OK
       if (response.statusCode != 200 && response.statusCode != 206) {
+        _cleanupClient();
         throw Exception('Failed to download model: ${response.statusCode}');
       }
 
@@ -99,6 +106,9 @@ class ModelManager {
       
       try {
         await for (final chunk in response.stream) {
+          if (_isCancelled) {
+            throw Exception('DOWNLOAD_CANCELLED');
+          }
           sink.add(chunk);
           downloadedBytes += chunk.length;
           
@@ -109,11 +119,19 @@ class ModelManager {
         }
       } finally {
         await sink.close();
+        _cleanupClient();
       }
 
       return modelFile.path;
       
     } catch (e) {
+      if (e.toString().contains('DOWNLOAD_CANCELLED')) {
+         throw Exception('STOPPED BY USER');
+      }
+      final errorStr = e.toString();
+      if (errorStr.contains('Connection closed') || errorStr.contains('SocketException')) {
+        throw Exception('Connection lost. Keep the screen on during download.');
+      }
       throw Exception('Download failed: $e');
     }
   }
@@ -173,6 +191,16 @@ class ModelManager {
     final cacheDir = await getApplicationDocumentsDirectory();
     final path = '${cacheDir.path}/models/$fileName';
     return path;
+  }
+
+  void cancelActiveDownload() {
+    _isCancelled = true;
+    _cleanupClient();
+  }
+
+  void _cleanupClient() {
+    _activeClient?.close();
+    _activeClient = null;
   }
 }
 
