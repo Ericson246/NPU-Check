@@ -151,7 +151,7 @@ class BenchmarkController extends _$BenchmarkController {
 
       // Start inference
       state = state.copyWith(
-        status: BenchmarkStatus.running,
+        status: BenchmarkStatus.preparing,
         progress: 0.0,
       );
 
@@ -163,7 +163,7 @@ class BenchmarkController extends _$BenchmarkController {
       if (workload.isTimeBased) {
         // We loop until the time is up, so if the model finishes one story, it starts another
         // away from the stuttering 16-token loop, but ensuring the test lasts the full duration.
-        while (state.status == BenchmarkStatus.running) {
+        while (state.status == BenchmarkStatus.running || state.status == BenchmarkStatus.preparing) {
           await _runOnePass(maxTokens: 2048);
           
           // Check if the timer fired or if we reached the end naturally after the time
@@ -180,7 +180,7 @@ class BenchmarkController extends _$BenchmarkController {
       _durationTimer?.cancel();
 
       // Check if we were cancelled during the loop
-      if (state.status == BenchmarkStatus.running) {
+      if (state.status == BenchmarkStatus.running || state.status == BenchmarkStatus.preparing) {
         // Save result
         await _saveResult();
         state = state.copyWith(status: BenchmarkStatus.completed);
@@ -218,7 +218,7 @@ class BenchmarkController extends _$BenchmarkController {
       );
     } catch (_) {
       // Stream swallowed/closed - likely due to manual stop
-      if (state.status != BenchmarkStatus.running) {
+      if (state.status != BenchmarkStatus.running && state.status != BenchmarkStatus.preparing) {
         return;
       }
       rethrow;
@@ -227,13 +227,16 @@ class BenchmarkController extends _$BenchmarkController {
 
   /// Handle incoming tokens
   void _onTokenReceived(TokenEvent event) {
-    if (state.status != BenchmarkStatus.running) return;
+    if (state.status != BenchmarkStatus.running && state.status != BenchmarkStatus.preparing) return;
 
     final now = DateTime.now();
 
     // Initialize start time on first token for 100% accuracy
     if (_startTime == null) {
       _startTime = now;
+      
+      // Now that the first token arrived, we are officially "running"
+      state = state.copyWith(status: BenchmarkStatus.running);
       
       // If it's time-based, start the countdown NOW
       if (state.workload.isTimeBased) {
@@ -422,16 +425,17 @@ class BenchmarkController extends _$BenchmarkController {
     state = state.copyWith(showTerminal: !state.showTerminal);
   }
 
-  /// Stop the benchmark
+  // Stop the benchmark
   Future<void> stopBenchmark() async {
-    final wasRunning = state.status == BenchmarkStatus.running || 
-                       state.status == BenchmarkStatus.loadingModel ||
-                       state.status == BenchmarkStatus.downloading;
+    final isActive = state.status == BenchmarkStatus.running || 
+                     state.status == BenchmarkStatus.preparing ||
+                     state.status == BenchmarkStatus.loadingModel ||
+                     state.status == BenchmarkStatus.downloading;
 
     // Set status immediately to avoid race conditions in the inference loop
     state = state.copyWith(
-      status: wasRunning ? BenchmarkStatus.error : BenchmarkStatus.idle,
-      errorMessage: wasRunning ? 'STOPPED BY USER' : null,
+      status: isActive ? BenchmarkStatus.error : BenchmarkStatus.idle,
+      errorMessage: isActive ? 'STOPPED BY USER' : null,
     );
 
     _modelManager.cancelActiveDownload();

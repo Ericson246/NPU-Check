@@ -27,6 +27,7 @@ enum BenchmarkStatus {
   idle,
   loadingModel,
   downloading,
+  preparing,
   running,
   completed,
   error,

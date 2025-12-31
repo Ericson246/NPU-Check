@@ -263,6 +263,10 @@ class HomeScreen extends ConsumerWidget {
       case BenchmarkStatus.downloading:
         message = 'DOWNLOADING: ${(state.progress * 100).toStringAsFixed(0)}%';
         break;
+      case BenchmarkStatus.preparing:
+        message = 'PREPARING INFERENCE ENGINE...';
+        color = AppTheme.neonCyan;
+        break;
       case BenchmarkStatus.running:
         message = 'INFERENCE IN PROGRESS...';
         color = AppTheme.neonGreen;
@@ -297,6 +301,7 @@ class HomeScreen extends ConsumerWidget {
       child: Row(
         children: [
           if (state.status == BenchmarkStatus.running ||
+              state.status == BenchmarkStatus.preparing ||
               state.status == BenchmarkStatus.downloading)
             SizedBox(
               width: 16,
@@ -307,6 +312,7 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
           if (state.status == BenchmarkStatus.running ||
+              state.status == BenchmarkStatus.preparing ||
               state.status == BenchmarkStatus.downloading)
             const SizedBox(width: 12),
           Expanded(
@@ -333,6 +339,7 @@ class HomeScreen extends ConsumerWidget {
     final controller = ref.read(benchmarkControllerProvider.notifier);
     final isDownloading = state.status == BenchmarkStatus.downloading;
     final isRunningOrLoading = state.status == BenchmarkStatus.running || 
+                               state.status == BenchmarkStatus.preparing ||
                                state.status == BenchmarkStatus.loadingModel;
     final isActive = isDownloading || isRunningOrLoading;
 
