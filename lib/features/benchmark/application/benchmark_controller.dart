@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../core/services/llama_service.dart';
 import '../domain/model_manager.dart';
 import '../domain/model_strategy.dart';
@@ -19,6 +20,7 @@ class BenchmarkController extends _$BenchmarkController {
   late final BenchmarkRepository _repository;
   StreamSubscription? _tokenSubscription;
   StreamSubscription? _statusSubscription;
+  StreamSubscription? _connectivitySubscription;
   
   int _tokensGenerated = 0;
   DateTime? _startTime;
@@ -35,9 +37,13 @@ class BenchmarkController extends _$BenchmarkController {
     
     // Initial check for downloaded models
     Future.microtask(() => _refreshDownloadedModels());
+    
+    // Initialize connectivity monitoring
+    _initConnectivity();
 
     ref.onDispose(() {
       _disposeService();
+      _connectivitySubscription?.cancel();
     });
 
     return const BenchmarkState();
@@ -93,6 +99,11 @@ class BenchmarkController extends _$BenchmarkController {
       status: BenchmarkStatus.idle,
       errorMessage: null,
       progress: 0.0,
+      currentSpeed: 0.0,
+      averageSpeed: 0.0,
+      generatedText: '',
+      ramUsageMB: 0.0,
+      ramPeakMB: 0.0,
       hasPartialDownload: hasPartial,
     );
     
@@ -112,7 +123,16 @@ class BenchmarkController extends _$BenchmarkController {
 
   /// Select a workload
   void selectWorkload(BenchmarkWorkload workload) {
-    state = state.copyWith(workload: workload);
+    state = state.copyWith(
+      workload: workload,
+      status: BenchmarkStatus.idle,
+      currentSpeed: 0.0,
+      averageSpeed: 0.0,
+      generatedText: '',
+      progress: 0.0,
+      ramUsageMB: 0.0,
+      ramPeakMB: 0.0,
+    );
   }
 
   /// Start a benchmark
@@ -430,6 +450,20 @@ class BenchmarkController extends _$BenchmarkController {
     state = state.copyWith(showTerminal: !state.showTerminal);
   }
 
+  /// Reset benchmark metrics and generated text
+  void resetBenchmark() {
+    state = state.copyWith(
+      status: BenchmarkStatus.idle,
+      currentSpeed: 0.0,
+      averageSpeed: 0.0,
+      generatedText: '',
+      progress: 0.0,
+      ramUsageMB: 0.0,
+      ramPeakMB: 0.0,
+      errorMessage: null,
+    );
+  }
+
   // Stop the benchmark
   Future<void> stopBenchmark() async {
     final isActive = state.status == BenchmarkStatus.running || 
@@ -443,10 +477,33 @@ class BenchmarkController extends _$BenchmarkController {
       errorMessage: isActive ? 'STOPPED BY USER' : null,
     );
 
+    // If we were already in completed state, also reset the values
+    if (!isActive && state.status == BenchmarkStatus.idle) {
+      resetBenchmark();
+    }
+
     _modelManager.cancelActiveDownload();
     _activeDownloads.clear();
 
     await _disposeService();
+  }
+
+  Future<void> _initConnectivity() async {
+    // Check initial connectivity
+    final result = await Connectivity().checkConnectivity();
+    _updateConnectivity(result);
+
+    // Listen to changes
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) {
+      _updateConnectivity(result);
+    });
+  }
+
+  void _updateConnectivity(ConnectivityResult result) {
+    final bool isOffline = result == ConnectivityResult.none;
+    if (state.isOfflineMode != isOffline) {
+      state = state.copyWith(isOfflineMode: isOffline);
+    }
   }
 }
 

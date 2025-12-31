@@ -155,7 +155,7 @@ class HomeScreen extends ConsumerWidget {
         children: [
           // App title
           const Text(
-            'NEURAL GAUGE',
+            'NPU CHECK',
             style: TextStyle(
               fontFamily: 'Orbitron',
               fontSize: 20,

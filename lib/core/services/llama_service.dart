@@ -63,7 +63,7 @@ class LlamaService {
     _isolate = await Isolate.spawn(
       _isolateEntry,
       _receivePort.sendPort,
-      debugName: 'LlamaInferenceIsolate',
+      debugName: 'NPUCheckInferenceIsolate',
     );
 
     // Wait for Isolate to be ready

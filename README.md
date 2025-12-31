@@ -1,4 +1,4 @@
-# NeuralGauge 🚀
+# NPU Check 🚀
 
 A professional AI benchmarking application for Android/iOS built with Flutter. Test your device's AI inference performance with real-time metrics, resumable downloads, and a stunning cyberpunk-themed interface.
 
