@@ -23,7 +23,7 @@ extension ModelTypeExtension on ModelType {
       case ModelType.tinyLlama:
         return 'Mejor calidad - Requiere 637 MB';
       case ModelType.phi2:
-        return 'Máxima calidad - Requiere 1.6 GB';
+        return 'Máxima calidad - Requiere 1.7 GB';
     }
   }
   
@@ -34,7 +34,7 @@ extension ModelTypeExtension on ModelType {
       case ModelType.tinyLlama:
         return 637.0;
       case ModelType.phi2:
-        return 1600.0;
+        return 1710.0; // Actual file size from HuggingFace
     }
   }
   

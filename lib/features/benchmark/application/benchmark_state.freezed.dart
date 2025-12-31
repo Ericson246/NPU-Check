@@ -32,6 +32,7 @@ mixin _$BenchmarkState {
   String? get modelName => throw _privateConstructorUsedError;
   BenchmarkWorkload get workload => throw _privateConstructorUsedError;
   List<ModelType> get downloadedModels => throw _privateConstructorUsedError;
+  bool get hasPartialDownload => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
   $BenchmarkStateCopyWith<BenchmarkState> get copyWith =>
@@ -58,7 +59,8 @@ abstract class $BenchmarkStateCopyWith<$Res> {
       String? errorMessage,
       String? modelName,
       BenchmarkWorkload workload,
-      List<ModelType> downloadedModels});
+      List<ModelType> downloadedModels,
+      bool hasPartialDownload});
 }
 
 /// @nodoc
@@ -88,6 +90,7 @@ class _$BenchmarkStateCopyWithImpl<$Res, $Val extends BenchmarkState>
     Object? modelName = freezed,
     Object? workload = null,
     Object? downloadedModels = null,
+    Object? hasPartialDownload = null,
   }) {
     return _then(_value.copyWith(
       currentSpeed: null == currentSpeed
@@ -146,6 +149,10 @@ class _$BenchmarkStateCopyWithImpl<$Res, $Val extends BenchmarkState>
           ? _value.downloadedModels
           : downloadedModels // ignore: cast_nullable_to_non_nullable
               as List<ModelType>,
+      hasPartialDownload: null == hasPartialDownload
+          ? _value.hasPartialDownload
+          : hasPartialDownload // ignore: cast_nullable_to_non_nullable
+              as bool,
     ) as $Val);
   }
 }
@@ -172,7 +179,8 @@ abstract class _$$BenchmarkStateImplCopyWith<$Res>
       String? errorMessage,
       String? modelName,
       BenchmarkWorkload workload,
-      List<ModelType> downloadedModels});
+      List<ModelType> downloadedModels,
+      bool hasPartialDownload});
 }
 
 /// @nodoc
@@ -200,6 +208,7 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
     Object? modelName = freezed,
     Object? workload = null,
     Object? downloadedModels = null,
+    Object? hasPartialDownload = null,
   }) {
     return _then(_$BenchmarkStateImpl(
       currentSpeed: null == currentSpeed
@@ -258,6 +267,10 @@ class __$$BenchmarkStateImplCopyWithImpl<$Res>
           ? _value._downloadedModels
           : downloadedModels // ignore: cast_nullable_to_non_nullable
               as List<ModelType>,
+      hasPartialDownload: null == hasPartialDownload
+          ? _value.hasPartialDownload
+          : hasPartialDownload // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }
@@ -279,7 +292,8 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
       this.errorMessage,
       this.modelName,
       this.workload = BenchmarkWorkload.standard,
-      final List<ModelType> downloadedModels = const []})
+      final List<ModelType> downloadedModels = const [],
+      this.hasPartialDownload = false})
       : _downloadedModels = downloadedModels;
 
   @override
@@ -333,8 +347,12 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
   }
 
   @override
+  @JsonKey()
+  final bool hasPartialDownload;
+
+  @override
   String toString() {
-    return 'BenchmarkState(currentSpeed: $currentSpeed, averageSpeed: $averageSpeed, generatedText: $generatedText, progress: $progress, isOfflineMode: $isOfflineMode, ramUsageMB: $ramUsageMB, ramPeakMB: $ramPeakMB, status: $status, selectedModel: $selectedModel, showTerminal: $showTerminal, errorMessage: $errorMessage, modelName: $modelName, workload: $workload, downloadedModels: $downloadedModels)';
+    return 'BenchmarkState(currentSpeed: $currentSpeed, averageSpeed: $averageSpeed, generatedText: $generatedText, progress: $progress, isOfflineMode: $isOfflineMode, ramUsageMB: $ramUsageMB, ramPeakMB: $ramPeakMB, status: $status, selectedModel: $selectedModel, showTerminal: $showTerminal, errorMessage: $errorMessage, modelName: $modelName, workload: $workload, downloadedModels: $downloadedModels, hasPartialDownload: $hasPartialDownload)';
   }
 
   @override
@@ -368,7 +386,9 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
             (identical(other.workload, workload) ||
                 other.workload == workload) &&
             const DeepCollectionEquality()
-                .equals(other._downloadedModels, _downloadedModels));
+                .equals(other._downloadedModels, _downloadedModels) &&
+            (identical(other.hasPartialDownload, hasPartialDownload) ||
+                other.hasPartialDownload == hasPartialDownload));
   }
 
   @override
@@ -387,7 +407,8 @@ class _$BenchmarkStateImpl implements _BenchmarkState {
       errorMessage,
       modelName,
       workload,
-      const DeepCollectionEquality().hash(_downloadedModels));
+      const DeepCollectionEquality().hash(_downloadedModels),
+      hasPartialDownload);
 
   @JsonKey(ignore: true)
   @override
@@ -412,7 +433,8 @@ abstract class _BenchmarkState implements BenchmarkState {
       final String? errorMessage,
       final String? modelName,
       final BenchmarkWorkload workload,
-      final List<ModelType> downloadedModels}) = _$BenchmarkStateImpl;
+      final List<ModelType> downloadedModels,
+      final bool hasPartialDownload}) = _$BenchmarkStateImpl;
 
   @override
   double get currentSpeed;
@@ -442,6 +464,8 @@ abstract class _BenchmarkState implements BenchmarkState {
   BenchmarkWorkload get workload;
   @override
   List<ModelType> get downloadedModels;
+  @override
+  bool get hasPartialDownload;
   @override
   @JsonKey(ignore: true)
   _$$BenchmarkStateImplCopyWith<_$BenchmarkStateImpl> get copyWith =>

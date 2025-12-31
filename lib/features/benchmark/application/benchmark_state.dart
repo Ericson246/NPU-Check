@@ -20,6 +20,7 @@ class BenchmarkState with _$BenchmarkState {
     String? modelName,
     @Default(BenchmarkWorkload.standard) BenchmarkWorkload workload,
     @Default([]) List<ModelType> downloadedModels,
+    @Default(false) bool hasPartialDownload,
   }) = _BenchmarkState;
 }
 

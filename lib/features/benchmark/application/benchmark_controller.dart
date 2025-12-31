@@ -8,6 +8,7 @@ import '../domain/model_type.dart';
 import '../data/repositories/benchmark_repository.dart';
 import '../data/models/benchmark_result.dart';
 import 'benchmark_state.dart';
+import 'partial_download_checker.dart';
 
 part 'benchmark_controller.g.dart';
 
@@ -84,11 +85,15 @@ class BenchmarkController extends _$BenchmarkController {
 
   /// Select a model
   Future<void> selectModel(ModelType modelType) async {
+    // Check if this model has a partial download
+    final hasPartial = await PartialDownloadChecker.hasPartialDownload(modelType);
+    
     state = state.copyWith(
       selectedModel: modelType,
       status: BenchmarkStatus.idle,
       errorMessage: null,
       progress: 0.0,
+      hasPartialDownload: hasPartial,
     );
     
     // Proactively refresh the downloaded models list to be absolutely sure

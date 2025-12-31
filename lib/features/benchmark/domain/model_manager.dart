@@ -54,9 +54,10 @@ class ModelManager {
     
     final size = await file.length();
     final expectedSize = (expectedSizeMB * 1024 * 1024).toInt();
+    final tolerance = (expectedSize * 0.05).toInt(); // 5% tolerance
     
-    // Check if size is within 1MB of expected size
-    return (size - expectedSize).abs() < 1024 * 1024;
+    // Check if size is within 5% of expected size
+    return (size - expectedSize).abs() < tolerance;
   }
 
   /// Download and cache a model from OnlineModelStrategy
@@ -75,11 +76,21 @@ class ModelManager {
       }
 
       final expectedSize = (strategy.expectedSizeMB * 1024 * 1024).toInt();
+      final tolerance = (expectedSize * 0.05).toInt(); // 5% tolerance
+      
+      print('DEBUG Download: File=${modelFile.path}');
+      print('DEBUG Download: Existing=${existingBytes} bytes (${(existingBytes / 1024 / 1024).toStringAsFixed(1)} MB)');
+      print('DEBUG Download: Expected=${expectedSize} bytes (${strategy.expectedSizeMB.toStringAsFixed(1)} MB)');
+      print('DEBUG Download: Tolerance=±${tolerance} bytes (±${(tolerance / 1024 / 1024).toStringAsFixed(1)} MB)');
+      print('DEBUG Download: Range=${expectedSize - tolerance} to ${expectedSize + tolerance}');
       
       // If already fully downloaded
-      if (existingBytes >= expectedSize - (1024 * 1024) && existingBytes <= expectedSize + (1024 * 1024)) {
+      if (existingBytes >= expectedSize - tolerance && existingBytes <= expectedSize + tolerance) {
+        print('DEBUG Download: File is complete, skipping download');
         return modelFile.path;
       }
+      
+      print('DEBUG Download: File incomplete or corrupt, starting/resuming download');
 
       _isCancelled = false;
       _activeClient = http.Client();
@@ -91,12 +102,34 @@ class ModelManager {
       }
 
       final response = await _activeClient!.send(request);
+      
+      print('DEBUG Download: HTTP Status=${response.statusCode}');
+      print('DEBUG Download: Content-Length=${response.contentLength}');
+
+      // Handle 416 Range Not Satisfiable - file is already complete
+      if (response.statusCode == 416) {
+        print('DEBUG Download: Got 416 Range Not Satisfiable');
+        _cleanupClient();
+        // Verify the file is actually complete
+        if (existingBytes >= expectedSize - tolerance && existingBytes <= expectedSize + tolerance) {
+          print('DEBUG Download: File size valid, accepting as complete');
+          return modelFile.path;
+        } else {
+          print('DEBUG Download: File size invalid, deleting corrupt file');
+          // File is corrupt, delete and restart
+          await modelFile.delete();
+          throw Exception('File corrupted. Please restart download.');
+        }
+      }
 
       // Handle 206 Partial Content or 200 OK
       if (response.statusCode != 200 && response.statusCode != 206) {
+        print('DEBUG Download: Unexpected status code: ${response.statusCode}');
         _cleanupClient();
         throw Exception('Failed to download model: ${response.statusCode}');
       }
+      
+      print('DEBUG Download: Starting stream download (status ${response.statusCode})');
 
       final bool isResuming = response.statusCode == 206;
       int downloadedBytes = isResuming ? existingBytes : 0;

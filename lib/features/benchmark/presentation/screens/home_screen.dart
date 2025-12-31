@@ -348,6 +348,8 @@ class HomeScreen extends ConsumerWidget {
       buttonText = 'CANCEL DOWNLOAD';
     } else if (isRunningOrLoading) {
       buttonText = 'STOP BENCHMARK';
+    } else if (state.hasPartialDownload) {
+      buttonText = 'RESUME DOWNLOAD';
     }
 
     return SizedBox(
