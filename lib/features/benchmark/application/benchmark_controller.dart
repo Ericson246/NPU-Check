@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -168,8 +169,26 @@ class BenchmarkController extends _$BenchmarkController {
         modelName: strategy.modelName,
       );
 
-      // Load model
-      await _llamaService!.loadModel(modelPath);
+      // Load model with corruption recovery
+      try {
+        await _llamaService!.loadModel(modelPath);
+      } catch (e) {
+        // If loading fails, it's likely a corrupt model file (code -1)
+        // We should delete it so the user can download it cleanly again
+        if (modelPath.endsWith('.gguf')) {
+          final file = File(modelPath);
+          if (await file.exists()) {
+             print('DEBUG: Deleting corrupt model file: $modelPath');
+             await file.delete();
+             
+             // Update persisted state to reflect we no longer have it
+             await _refreshDownloadedModels();
+             
+             throw Exception('Model file was corrupt and has been deleted. Please download it again.');
+          }
+        }
+        rethrow;
+      }
 
       // Update RAM usage after loading the model
       _updateRamUsage();
