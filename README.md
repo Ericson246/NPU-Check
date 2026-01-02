@@ -11,7 +11,7 @@ A professional AI benchmarking application for Android/iOS built with Flutter. T
 ### 🤖 Multiple AI Models
 - **TinyStories (7.7 MB)** - Bundled, instant access, perfect for quick tests
 - **TinyLlama (637 MB)** - Balanced performance, downloadable
-- **Phi-2 (1.6 GB)** - Maximum quality, advanced benchmarking
+- **Gemma 2 2B (1.7 GB)** - High performance, modern architecture by Google
 
 ### 📊 Flexible Benchmark Modes
 - **Quick Scan** (50 tokens) - Fast device check
@@ -140,13 +140,18 @@ flutter pub get
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-#### Step 5: Run the App
+#### Step 5: Run/Build the App
 ```bash
 # Debug mode
 flutter run
 
-# Release build (recommended for accurate benchmarks)
+# Create Signed Release Bundle (For Google Play)
+flutter build appbundle
+# Output: build/app/outputs/bundle/release/app-release.aab
+
+# Create Signed Release APK (For manual install)
 flutter build apk --release
+# Output: build/app/outputs/flutter-apk/app-release.apk
 ```
 
 ## 📖 User Guide
@@ -296,6 +301,10 @@ enum BenchmarkWorkload {
 
 ### Benchmark Issues
 
+**Problem**: "Download failed" or Corrupt file loop
+- **Solution**: Fixed in v1.0. App now automatically deletes corrupt files and validates headers (no more 416 errors).
+- **Action**: Just retry the download.
+
 **Problem**: Benchmark stays at "PREPARING INFERENCE ENGINE"
 - **Solution**: Fixed in latest version
 - **Cause**: State transition bug, now resolved
@@ -380,6 +389,21 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+---
+
+## 🚀 Google Play Release Guide
+
+To generate the `.aab` file for Google Play:
+
+1. **Verify Permissions**: `android/app/src/main/AndroidManifest.xml` checked.
+2. **Signing**: `upload-keystore.jks` and `key.properties` configured.
+3. **Build Command**:
+   ```bash
+   flutter build appbundle
+   ```
+4. **Locate File**: `build/app/outputs/bundle/release/app-release.aab`
+5. **Upload**: Drag this file to Google Play Console.
 
 ---
 

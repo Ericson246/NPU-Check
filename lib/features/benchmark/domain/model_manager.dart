@@ -101,9 +101,10 @@ class ModelManager {
         if (existingBytes >= expectedSize - tolerance && existingBytes <= expectedSize + tolerance) {
           return modelFile.path;
         } else {
-          // File is corrupt, delete and restart
+          // File is corrupt or size mismatch, delete and restart download automatically
           await modelFile.delete();
-          throw Exception('File corrupted. Please restart download.');
+          // Recursive call to start fresh
+          return downloadModel(strategy);
         }
       }
 
@@ -111,6 +112,13 @@ class ModelManager {
       if (response.statusCode != 200 && response.statusCode != 206) {
         _cleanupClient();
         throw Exception('Failed to download model: ${response.statusCode}');
+      }
+
+      // Check for content type to avoid downloading HTML (e.g. 404/Auth pages returned as 200)
+      final contentType = response.headers['content-type'];
+      if (contentType != null && contentType.contains('text/html')) {
+        _cleanupClient();
+        throw Exception('Invalid download URL: Server returned HTML instead of GGUF file.');
       }
 
       final bool isResuming = response.statusCode == 206;
