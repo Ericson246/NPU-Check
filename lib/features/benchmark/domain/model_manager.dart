@@ -14,6 +14,9 @@ class ModelManager {
   Stream<double>? _downloadProgress;
   Stream<double>? get downloadProgress => _downloadProgress;
 
+  http.Client? _activeClient;
+  bool _isCancelled = false;
+
   /// Check if device has internet connectivity
   Future<bool> hasConnectivity() async {
     final result = await _connectivity.checkConnectivity();
@@ -22,51 +25,39 @@ class ModelManager {
            result == ConnectivityResult.ethernet;
   }
 
-  /// Select the appropriate model strategy based on model type
   Future<ModelStrategy> selectStrategy({
     ModelType modelType = ModelType.tinyStories,
   }) async {
-    switch (modelType) {
-      case ModelType.tinyStories:
-        // Modelo embebido - siempre disponible
-        return EmbeddedModelStrategy();
-        
-      case ModelType.tinyLlama:
-        // Verificar si está cacheado
-        final cachedPath = await _getCachedModelPath(modelType.fileName);
-        if (cachedPath != null && await File(cachedPath).exists()) {
-          return _CachedModelStrategy(
-            cachedPath,
-            modelType.displayName,
-            modelType.sizeMB,
-          );
-        }
-        
-        // Retornar estrategia de descarga
-        return OnlineModelStrategy(
-          downloadUrl: modelType.downloadUrl,
-          modelName: modelType.displayName,
-          sizeMB: modelType.sizeMB,
-        );
-        
-      case ModelType.phi2:
-        // Verificar si está cacheado
-        final cachedPath = await _getCachedModelPath(modelType.fileName);
-        if (cachedPath != null && await File(cachedPath).exists()) {
-          return _CachedModelStrategy(
-            cachedPath,
-            modelType.displayName,
-            modelType.sizeMB,
-          );
-        }
-        
-        // Retornar estrategia de descarga
-        return OnlineModelStrategy(
-          downloadUrl: modelType.downloadUrl,
-          modelName: modelType.displayName,
-          sizeMB: modelType.sizeMB,
-        );
+    if (modelType.isEmbedded) {
+      return EmbeddedModelStrategy();
     }
+
+    final cachedPath = await _getCachedModelPath(modelType.fileName);
+    if (cachedPath != null && await _isModelFullyDownloaded(cachedPath, modelType.sizeMB)) {
+      return _CachedModelStrategy(
+        cachedPath,
+        modelType.displayName,
+        modelType.sizeMB,
+      );
+    }
+
+    return OnlineModelStrategy(
+      downloadUrl: modelType.downloadUrl,
+      modelName: modelType.displayName,
+      sizeMB: modelType.sizeMB,
+    );
+  }
+
+  Future<bool> _isModelFullyDownloaded(String path, double expectedSizeMB) async {
+    final file = File(path);
+    if (!await file.exists()) return false;
+    
+    final size = await file.length();
+    final expectedSize = (expectedSizeMB * 1024 * 1024).toInt();
+    final tolerance = (expectedSize * 0.05).toInt(); // 5% tolerance
+    
+    // Check if size is within 5% of expected size
+    return (size - expectedSize).abs() < tolerance;
   }
 
   /// Download and cache a model from OnlineModelStrategy
@@ -79,45 +70,91 @@ class ModelManager {
       // Create directory if it doesn't exist
       await modelFile.parent.create(recursive: true);
 
-      // Check if already downloaded
+      int existingBytes = 0;
       if (await modelFile.exists()) {
-        final size = await modelFile.length();
-        final expectedSize = (strategy.expectedSizeMB * 1024 * 1024).toInt();
-        
-        // If file size matches, return cached path
-        if ((size - expectedSize).abs() < 1024 * 1024) {
+        existingBytes = await modelFile.length();
+      }
+
+      final expectedSize = (strategy.expectedSizeMB * 1024 * 1024).toInt();
+      final tolerance = (expectedSize * 0.05).toInt(); // 5% tolerance
+      
+      // If already fully downloaded
+      if (existingBytes >= expectedSize - tolerance && existingBytes <= expectedSize + tolerance) {
+        return modelFile.path;
+      }
+
+      _isCancelled = false;
+      _activeClient = http.Client();
+
+      // Prepare request with Range header if partial file exists
+      final request = http.Request('GET', Uri.parse(strategy.downloadUrl));
+      if (existingBytes > 0) {
+        request.headers['Range'] = 'bytes=$existingBytes-';
+      }
+
+      final response = await _activeClient!.send(request);
+
+      // Handle 416 Range Not Satisfiable - file is already complete
+      if (response.statusCode == 416) {
+        _cleanupClient();
+        // Verify the file is actually complete
+        if (existingBytes >= expectedSize - tolerance && existingBytes <= expectedSize + tolerance) {
           return modelFile.path;
+        } else {
+          // File is corrupt or size mismatch, delete and restart download automatically
+          await modelFile.delete();
+          // Recursive call to start fresh
+          return downloadModel(strategy);
         }
       }
 
-      // Download the model
-      final request = http.Request('GET', Uri.parse(strategy.downloadUrl));
-      final response = await request.send();
-
-      if (response.statusCode != 200) {
+      // Handle 206 Partial Content or 200 OK
+      if (response.statusCode != 200 && response.statusCode != 206) {
+        _cleanupClient();
         throw Exception('Failed to download model: ${response.statusCode}');
       }
 
-      final totalBytes = response.contentLength ?? 0;
-      int downloadedBytes = 0;
-
-      final sink = modelFile.openWrite();
-      
-      await for (final chunk in response.stream) {
-        sink.add(chunk);
-        downloadedBytes += chunk.length;
-        
-        if (totalBytes > 0) {
-          final progress = downloadedBytes / totalBytes;
-          strategy.onProgress?.call(progress);
-        }
+      // Check for content type to avoid downloading HTML (e.g. 404/Auth pages returned as 200)
+      final contentType = response.headers['content-type'];
+      if (contentType != null && contentType.contains('text/html')) {
+        _cleanupClient();
+        throw Exception('Invalid download URL: Server returned HTML instead of GGUF file.');
       }
 
-      await sink.close();
+      final bool isResuming = response.statusCode == 206;
+      int downloadedBytes = isResuming ? existingBytes : 0;
+      final totalBytes = (response.contentLength ?? 0) + downloadedBytes;
+
+      final sink = modelFile.openWrite(mode: isResuming ? FileMode.append : FileMode.write);
+      
+      try {
+        await for (final chunk in response.stream) {
+          if (_isCancelled) {
+            throw Exception('DOWNLOAD_CANCELLED');
+          }
+          sink.add(chunk);
+          downloadedBytes += chunk.length;
+          
+          if (totalBytes > 0) {
+            final progress = downloadedBytes / totalBytes;
+            strategy.onProgress?.call(progress);
+          }
+        }
+      } finally {
+        await sink.close();
+        _cleanupClient();
+      }
+
       return modelFile.path;
       
     } catch (e) {
-      // Download failed, fallback to offline model
+      if (e.toString().contains('DOWNLOAD_CANCELLED')) {
+         throw Exception('STOPPED BY USER');
+      }
+      final errorStr = e.toString();
+      if (errorStr.contains('Connection closed') || errorStr.contains('SocketException')) {
+        throw Exception('Connection lost. Keep the screen on during download.');
+      }
       throw Exception('Download failed: $e');
     }
   }
@@ -177,6 +214,16 @@ class ModelManager {
     final cacheDir = await getApplicationDocumentsDirectory();
     final path = '${cacheDir.path}/models/$fileName';
     return path;
+  }
+
+  void cancelActiveDownload() {
+    _isCancelled = true;
+    _cleanupClient();
+  }
+
+  void _cleanupClient() {
+    _activeClient?.close();
+    _activeClient = null;
   }
 }
 

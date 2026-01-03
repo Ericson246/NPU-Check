@@ -1,4 +1,4 @@
-name: neural_gauge
+name: npu_check
 description: "AI Benchmarking app with cyberpunk aesthetics"
 publish_to: "none"
 version: 1.0.0+1
@@ -51,6 +51,7 @@ dev_dependencies:
   freezed: ^2.4.7
   json_serializable: ^6.7.1
   hive_generator: ^2.0.1
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -58,3 +59,11 @@ flutter:
   assets:
     - assets/models/tinystories-3m-q2_k.gguf
     - assets/fonts/
+    - assets/icon/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#0A0E27"
+  adaptive_icon_foreground: "assets/icon/icon.png"

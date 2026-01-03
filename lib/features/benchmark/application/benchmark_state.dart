@@ -7,15 +7,20 @@ part 'benchmark_state.freezed.dart';
 class BenchmarkState with _$BenchmarkState {
   const factory BenchmarkState({
     @Default(0.0) double currentSpeed, // tokens per second
+    @Default(0.0) double averageSpeed, // average tokens per second
     @Default('') String generatedText,
     @Default(0.0) double progress, // 0.0 to 1.0
     @Default(false) bool isOfflineMode,
     @Default(0.0) double ramUsageMB,
+    @Default(0.0) double ramPeakMB,
     @Default(BenchmarkStatus.idle) BenchmarkStatus status,
     @Default(ModelType.tinyStories) ModelType selectedModel,
+    @Default(false) bool showTerminal,
     String? errorMessage,
     String? modelName,
     @Default(BenchmarkWorkload.standard) BenchmarkWorkload workload,
+    @Default([]) List<ModelType> downloadedModels,
+    @Default(false) bool hasPartialDownload,
   }) = _BenchmarkState;
 }
 
@@ -23,6 +28,7 @@ enum BenchmarkStatus {
   idle,
   loadingModel,
   downloading,
+  preparing,
   running,
   completed,
   error,

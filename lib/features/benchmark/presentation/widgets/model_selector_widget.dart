@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/model_type.dart';
+import '../../domain/model_manager.dart';
+import '../../domain/model_strategy.dart';
 
 class ModelSelectorWidget extends StatelessWidget {
   final ModelType selectedModel;
+  final List<ModelType> downloadedModels;
   final Function(ModelType) onModelSelected;
   
   const ModelSelectorWidget({
     super.key,
     required this.selectedModel,
+    required this.downloadedModels,
     required this.onModelSelected,
   });
 
@@ -44,13 +48,15 @@ class ModelSelectorWidget extends StatelessWidget {
               color: AppTheme.neonCyan.withOpacity(0.3),
             ),
             items: ModelType.values.map((model) {
+              final isDownloaded = downloadedModels.contains(model);
+
               return DropdownMenuItem(
                 value: model,
                 child: Row(
                   children: [
                     Icon(
-                      model.isEmbedded ? Icons.check_circle : Icons.download,
-                      color: model.isEmbedded ? AppTheme.neonCyan : AppTheme.neonMagenta,
+                      isDownloaded ? Icons.check_circle : Icons.download,
+                      color: isDownloaded ? AppTheme.neonCyan : AppTheme.neonMagenta,
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -91,11 +97,20 @@ class ModelSelectorWidget extends StatelessWidget {
     );
   }
   
-  void _handleModelSelection(BuildContext context, ModelType newModel) {
-    if (newModel.isEmbedded) {
-      // Modelo embebido - seleccionar directamente
+  void _handleModelSelection(BuildContext context, ModelType newModel) async {
+    final isDownloaded = downloadedModels.contains(newModel);
+
+    if (isDownloaded) {
+      // Modelo ya disponible - seleccionar directamente
       onModelSelected(newModel);
     } else {
+      // Doble comprobación rápida por si la lista de estado está ligeramente desincronizada
+      final strategy = await ModelManager().selectStrategy(modelType: newModel);
+      if (strategy is! OnlineModelStrategy) {
+        onModelSelected(newModel);
+        return;
+      }
+
       // Modelo descargable - mostrar advertencia
       showDialog(
         context: context,

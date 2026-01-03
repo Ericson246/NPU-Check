@@ -27,11 +27,11 @@ class _SpeedometerWidgetState extends State<SpeedometerWidget>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 50),
       vsync: this,
     );
     _animation = Tween<double>(begin: 0, end: widget.tokensPerSecond)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
     _controller.forward();
   }
 
@@ -42,7 +42,7 @@ class _SpeedometerWidgetState extends State<SpeedometerWidget>
       _animation = Tween<double>(
         begin: _currentSpeed,
         end: widget.tokensPerSecond,
-      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+      ).animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
       _controller.forward(from: 0);
     }
   }
@@ -59,12 +59,19 @@ class _SpeedometerWidgetState extends State<SpeedometerWidget>
       animation: _animation,
       builder: (context, child) {
         _currentSpeed = _animation.value;
-        return CustomPaint(
-          size: const Size(300, 300),
-          painter: _SpeedometerPainter(
-            speed: _currentSpeed,
-            maxSpeed: widget.maxSpeed,
-          ),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final size = constraints.maxWidth < constraints.maxHeight 
+                ? constraints.maxWidth 
+                : constraints.maxHeight;
+            return CustomPaint(
+              size: Size(size, size),
+              painter: _SpeedometerPainter(
+                speed: _currentSpeed,
+                maxSpeed: widget.maxSpeed,
+              ),
+            );
+          },
         );
       },
     );

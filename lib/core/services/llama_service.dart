@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ffi' as ffi;
 import 'dart:isolate';
+import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'llama_bindings.dart';
 
@@ -41,6 +42,8 @@ class LlamaService {
   Stream<String> get statusStream => _statusController.stream;
 
   bool _isInitialized = false;
+  final _bindingsForMain = LlamaBindings();
+  String? _lastLoadedModelPath;
 
   /// Initialize the service and spawn the Isolate
   Future<void> initialize() async {
@@ -60,7 +63,7 @@ class LlamaService {
     _isolate = await Isolate.spawn(
       _isolateEntry,
       _receivePort.sendPort,
-      debugName: 'LlamaInferenceIsolate',
+      debugName: 'NPUCheckInferenceIsolate',
     );
 
     // Wait for Isolate to be ready
@@ -68,12 +71,26 @@ class LlamaService {
     _isInitialized = true;
   }
 
-  /// Load a model from the given path
+  /// Load a model from GGUF file
   Future<void> loadModel(String modelPath) async {
-    if (!_isInitialized) {
-      throw StateError('Service not initialized. Call initialize() first.');
+    if (_lastLoadedModelPath == modelPath) {
+      _statusController.add('Model already loaded: $modelPath');
+      return;
     }
+
+    if (!_isInitialized) await initialize();
     _sendPort?.send(LoadModelMessage(modelPath));
+    _lastLoadedModelPath = modelPath;
+    
+    // Wait for the status controller to receive "Model loaded successfully" or Error
+    final result = await _statusController.stream.firstWhere(
+      (msg) => msg.startsWith('Model loaded successfully') || msg.startsWith('Error'),
+    );
+
+    if (result.startsWith('Error')) {
+      _lastLoadedModelPath = null;
+      throw Exception(result);
+    }
   }
 
   /// Run inference with the loaded model
@@ -84,23 +101,40 @@ class LlamaService {
     _sendPort?.send(RunInferenceMessage(prompt, maxTokens));
   }
 
+  /// Stop ongoing inference
+  void stopInference() {
+    _bindingsForMain.stopInference();
+  }
+
   /// Get current RAM usage in MB
   double getRamUsage() {
-    // This is called from main thread, not Isolate
-    // For real implementation, you'd need to send a message and wait for response
-    // For now, return 0 as placeholder
-    return 0.0;
+    try {
+      // ProcessInfo.currentRss returns the Resident Set Size in bytes.
+      // This includes memory used by the entire process (all Isolates and native code).
+      return ProcessInfo.currentRss / (1024 * 1024);
+    } catch (e) {
+      return 0.0;
+    }
   }
 
   /// Dispose the model and clean up resources
   Future<void> dispose() async {
+    // 1. Tell native code to stop any ongoing inference
+    // This affects the global state in the C++ library shared by isolates
+    _bindingsForMain.stopInference();
+
+    // 2. Try to signal the isolate to dispose gracefully
     _sendPort?.send(DisposeMessage());
-    await Future.delayed(const Duration(milliseconds: 100));
     
+    // 3. Give it time to break the inference loop and process the message
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    // 4. Kill it if it's still alive
     _isolate?.kill(priority: Isolate.immediate);
     _isolate = null;
     _sendPort = null;
     _isInitialized = false;
+    _lastLoadedModelPath = null;
     
     await _tokenController.close();
     await _statusController.close();
@@ -116,12 +150,11 @@ class LlamaService {
     mainSendPort.send(isolateReceivePort.sendPort);
 
     // Set up the native callback
-    // TODO: Implement proper callback mechanism for token streaming
-    // final callbackPointer = ffi.Pointer.fromFunction<TokenCallbackNative>(
-    //   _nativeTokenCallback,
-    //   // Default value for void return
-    // );
-    // bindings.setTokenCallback(callbackPointer);
+    _isolateSendPort = mainSendPort;
+    final callbackPointer = ffi.Pointer.fromFunction<TokenCallbackNative>(
+      _nativeTokenCallback,
+    );
+    bindings.setTokenCallback?.call(callbackPointer);
 
     // Listen for messages from main thread
     isolateReceivePort.listen((message) {
@@ -167,10 +200,13 @@ class LlamaService {
     });
   }
 
+  static SendPort? _isolateSendPort;
+
   /// Native callback wrapper (must be top-level or static)
   static void _nativeTokenCallback(ffi.Pointer<ffi.Char> token, int timeMs) {
-    // This gets called from C++
-    // For now, we'll rely on the native code to batch tokens
-    // and return them all at once rather than streaming
+    if (_isolateSendPort != null) {
+      final tokenStr = token.cast<Utf8>().toDartString();
+      _isolateSendPort!.send(TokenEvent(tokenStr, timeMs));
+    }
   }
 }

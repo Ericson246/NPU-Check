@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../core/services/llama_service.dart';
 import '../domain/model_manager.dart';
 import '../domain/model_strategy.dart';
@@ -8,10 +10,10 @@ import '../domain/model_type.dart';
 import '../data/repositories/benchmark_repository.dart';
 import '../data/models/benchmark_result.dart';
 import 'benchmark_state.dart';
+import 'partial_download_checker.dart';
 
 part 'benchmark_controller.g.dart';
 
-@riverpod
 @riverpod
 class BenchmarkController extends _$BenchmarkController {
   LlamaService? _llamaService;
@@ -19,20 +21,50 @@ class BenchmarkController extends _$BenchmarkController {
   late final BenchmarkRepository _repository;
   StreamSubscription? _tokenSubscription;
   StreamSubscription? _statusSubscription;
+  StreamSubscription? _connectivitySubscription;
   
   int _tokensGenerated = 0;
   DateTime? _startTime;
+  final List<DateTime> _tokenWindow = [];
+  DateTime? _lastUpdate;
+  final StringBuffer _generatedBuffer = StringBuffer();
+  final Map<ModelType, Future<String?>> _activeDownloads = {};
+  Timer? _durationTimer;
 
   @override
   BenchmarkState build() {
     _modelManager = ModelManager();
     _repository = ref.watch(benchmarkRepositoryProvider);
     
+    // Initial check for downloaded models
+    Future.microtask(() => _refreshDownloadedModels());
+    
+    // Initialize connectivity monitoring
+    _initConnectivity();
+
     ref.onDispose(() {
       _disposeService();
+      _connectivitySubscription?.cancel();
     });
 
     return const BenchmarkState();
+  }
+
+  Future<void> _refreshDownloadedModels() async {
+    final List<ModelType> downloaded = [];
+    for (final model in ModelType.values) {
+      if (model.isEmbedded) {
+        downloaded.add(model);
+        continue;
+      }
+      
+      final strategy = await _modelManager.selectStrategy(modelType: model);
+      // If it's not OnlineModelStrategy, it means it's already local/cached
+      if (strategy is! OnlineModelStrategy) {
+        downloaded.add(model);
+      }
+    }
+    state = state.copyWith(downloadedModels: downloaded);
   }
 
   Future<void> _initService() async {
@@ -54,16 +86,54 @@ class BenchmarkController extends _$BenchmarkController {
     
     await _llamaService?.dispose();
     _llamaService = null;
+    _durationTimer?.cancel();
+    _durationTimer = null;
   }
 
   /// Select a model
-  void selectModel(ModelType modelType) {
-    state = state.copyWith(selectedModel: modelType);
+  Future<void> selectModel(ModelType modelType) async {
+    // Check if this model has a partial download
+    final hasPartial = await PartialDownloadChecker.hasPartialDownload(modelType);
+    
+    state = state.copyWith(
+      selectedModel: modelType,
+      status: BenchmarkStatus.idle,
+      errorMessage: null,
+      progress: 0.0,
+      currentSpeed: 0.0,
+      averageSpeed: 0.0,
+      generatedText: '',
+      ramUsageMB: 0.0,
+      ramPeakMB: 0.0,
+      hasPartialDownload: hasPartial,
+    );
+    
+    // Proactively refresh the downloaded models list to be absolutely sure
+    await _refreshDownloadedModels();
+    
+    // Auto-trigger download if needed
+    final strategy = await _modelManager.selectStrategy(modelType: modelType);
+    if (strategy is OnlineModelStrategy) {
+      if (_activeDownloads.containsKey(modelType)) {
+        // Already downloading this model, just wait for the existing task
+        return;
+      }
+      await _ensureModelDownloaded(strategy);
+    }
   }
 
   /// Select a workload
   void selectWorkload(BenchmarkWorkload workload) {
-    state = state.copyWith(workload: workload);
+    state = state.copyWith(
+      workload: workload,
+      status: BenchmarkStatus.idle,
+      currentSpeed: 0.0,
+      averageSpeed: 0.0,
+      generatedText: '',
+      progress: 0.0,
+      ramUsageMB: 0.0,
+      ramPeakMB: 0.0,
+    );
   }
 
   /// Start a benchmark
@@ -74,98 +144,99 @@ class BenchmarkController extends _$BenchmarkController {
         errorMessage: null,
         generatedText: '',
         currentSpeed: 0.0,
+        averageSpeed: 0.0,
+        progress: 0.0,
+        ramUsageMB: 0.0,
+        ramPeakMB: 0.0,
       );
+
+      _tokensGenerated = 0;
+      _tokenWindow.clear();
+      _generatedBuffer.clear();
+      _lastUpdate = null;
 
       // Initialize service
       await _initService();
 
-      // Select model strategy based on selected model
-      final strategy = await _modelManager.selectStrategy(
-        modelType: state.selectedModel,
-      );
+      // Ensure model is ready (downloaded/extracted)
+      final strategy = await _modelManager.selectStrategy(modelType: state.selectedModel);
+      final modelPath = await _ensureModelDownloaded(strategy);
+      
+      if (modelPath == null) return; // Error already handled in _ensureModelDownloaded
 
       state = state.copyWith(
+        status: BenchmarkStatus.loadingModel,
         modelName: strategy.modelName,
       );
 
-      // Get model path
-      String modelPath;
-      if (strategy is OnlineModelStrategy) {
-        state = state.copyWith(status: BenchmarkStatus.downloading);
-        
-        // Set up progress tracking
-        final strategyWithProgress = OnlineModelStrategy(
-          downloadUrl: strategy.downloadUrl,
-          modelName: strategy.modelName,
-          sizeMB: strategy.expectedSizeMB,
-          onProgress: (progress) {
-            state = state.copyWith(progress: progress);
-          },
-        );
-
-        try {
-          modelPath = await _modelManager.downloadModel(strategyWithProgress);
-        } catch (e) {
-          // Download failed
-          state = state.copyWith(
-            status: BenchmarkStatus.error,
-            errorMessage: 'Failed to download model: $e',
-          );
-          return;
+      // Load model with corruption recovery
+      try {
+        await _llamaService!.loadModel(modelPath);
+      } catch (e) {
+        // If loading fails, it's likely a corrupt model file (code -1)
+        // We should delete it so the user can download it cleanly again
+        if (modelPath.endsWith('.gguf')) {
+          final file = File(modelPath);
+          if (await file.exists()) {
+             print('DEBUG: Deleting corrupt model file: $modelPath');
+             await file.delete();
+             
+             // Update persisted state to reflect we no longer have it
+             await _refreshDownloadedModels();
+             
+             throw Exception('Model file was corrupt and has been deleted. Please download it again.');
+          }
         }
-      } else if (strategy is OfflineModelStrategy) {
-        // This shouldn't happen anymore, but keep for backwards compatibility
-        try {
-          modelPath = await _modelManager.extractAssetModel(strategy);
-        } catch (e) {
-          state = state.copyWith(
-            status: BenchmarkStatus.error,
-            errorMessage: 'Model not found. Please connect to internet to download.',
-          );
-          return;
-        }
-      } else if (strategy is EmbeddedModelStrategy) {
-        // Extract embedded model from assets
-        modelPath = await _modelManager.extractEmbeddedModel(strategy);
-      } else {
-        modelPath = await strategy.getModelPath();
+        rethrow;
       }
 
-      // Load model
-      await _llamaService!.loadModel(modelPath);
+      // Update RAM usage after loading the model
+      _updateRamUsage();
 
       // Start inference
       state = state.copyWith(
-        status: BenchmarkStatus.running,
+        status: BenchmarkStatus.preparing,
         progress: 0.0,
       );
 
       _tokensGenerated = 0;
-      _startTime = DateTime.now();
+      _startTime = null; // We will set this when the FIRST token arrives
       
       final workload = state.workload;
       
       if (workload.isTimeBased) {
-        // Time-based loop
-        while (DateTime.now().difference(_startTime!) < workload.minDuration) {
-          // Verify if we should stop (user cancelled)
-          if (state.status != BenchmarkStatus.running) break;
+        // We loop until the time is up, so if the model finishes one story, it starts another
+        // away from the stuttering 16-token loop, but ensuring the test lasts the full duration.
+        while (state.status == BenchmarkStatus.running || state.status == BenchmarkStatus.preparing) {
+          await _runOnePass(maxTokens: 2048);
           
-          await _runOnePass(maxTokens: 1024); // Use large max tokens to fill time
+          // Check if the timer fired or if we reached the end naturally after the time
+          if (_startTime != null && 
+              DateTime.now().difference(_startTime!) >= workload.minDuration) {
+            break;
+          }
         }
       } else {
         // Token-based (single pass)
         await _runOnePass(maxTokens: workload.tokens);
       }
 
+      _durationTimer?.cancel();
+
       // Check if we were cancelled during the loop
-      if (state.status == BenchmarkStatus.running) {
+      if (state.status == BenchmarkStatus.running || state.status == BenchmarkStatus.preparing) {
         // Save result
         await _saveResult();
         state = state.copyWith(status: BenchmarkStatus.completed);
       }
       
     } catch (e) {
+      // If the status is already idle or error (stopped by user), don't overwrite with a crash error
+      if (state.status == BenchmarkStatus.idle || 
+          (state.status == BenchmarkStatus.error && state.errorMessage == 'STOPPED BY USER')) {
+        return;
+      }
+
       await _disposeService();
       state = state.copyWith(
         status: BenchmarkStatus.error,
@@ -175,61 +246,192 @@ class BenchmarkController extends _$BenchmarkController {
   }
 
   Future<void> _runOnePass({required int maxTokens}) async {
+    if (_llamaService == null) return;
+
     // Start inference
     await _llamaService!.runInference(
       'Write a short story about artificial intelligence:',
       maxTokens: maxTokens,
     );
     
-    // Wait for completion
-    // We listen to the status stream for "Inference complete"
-    await _llamaService!.statusStream.firstWhere(
-      (msg) => msg.startsWith('Inference complete') || msg.startsWith('Error'),
-    );
+    try {
+      // Wait for completion
+      // We listen to the status stream for "Inference complete"
+      await _llamaService!.statusStream.firstWhere(
+        (msg) => msg.startsWith('Inference complete') || msg.startsWith('Error'),
+      );
+    } catch (_) {
+      // Stream swallowed/closed - likely due to manual stop
+      if (state.status != BenchmarkStatus.running && state.status != BenchmarkStatus.preparing) {
+        return;
+      }
+      rethrow;
+    }
   }
 
   /// Handle incoming tokens
   void _onTokenReceived(TokenEvent event) {
-    // 1. Update the displayed text
-    state = state.copyWith(generatedText: event.token);
+    if (state.status != BenchmarkStatus.running && state.status != BenchmarkStatus.preparing) return;
 
-    // 2. Estimate token count
-    // This is a rough approximation. For accurate token counting, a proper
-    // tokenizer would be needed. Here, we assume ~4 chars per token.
-    final estimatedTokens = (event.token.length / 4).round();
-    _tokensGenerated = estimatedTokens;
+    final now = DateTime.now();
 
-    // 3. Calculate speed & progress
-    if (_startTime != null && _tokensGenerated > 0) {
-      final now = DateTime.now();
-      final elapsed = now.difference(_startTime!);
+    // Initialize start time on first token for 100% accuracy
+    if (_startTime == null) {
+      _startTime = now;
       
-      if (elapsed.inMilliseconds > 0) {
-        final tokensPerSecond = _tokensGenerated / elapsed.inMilliseconds * 1000;
-        
-        double progress;
-        if (state.workload.isTimeBased) {
-          // Progress based on time
-          progress = elapsed.inMilliseconds / state.workload.minDuration.inMilliseconds;
-        } else {
-          // Progress based on tokens
-          progress = _tokensGenerated / state.workload.tokens;
-        }
-        
-        state = state.copyWith(
-          currentSpeed: tokensPerSecond,
-          progress: progress.clamp(0.0, 1.0),
-        );
+      // Now that the first token arrived, we are officially "running"
+      state = state.copyWith(status: BenchmarkStatus.running);
+      
+      // If it's time-based, start the countdown NOW
+      if (state.workload.isTimeBased) {
+        _durationTimer?.cancel();
+        _durationTimer = Timer(state.workload.minDuration, () {
+          if (state.status == BenchmarkStatus.running) {
+            _llamaService?.stopInference();
+          }
+        });
       }
     }
 
-    // 4. Update RAM usage (placeholder)
-    final ramUsage = _llamaService?.getRamUsage() ?? 0.0;
-    state = state.copyWith(ramUsageMB: ramUsage);
+    // 1. Buffer the token efficiently
+    _generatedBuffer.write(event.token);
+    _tokensGenerated++;
+    
+    _tokenWindow.add(now);
+
+    // 2. Remove tokens older than 1 second for the "real-time" speed window
+    _tokenWindow.removeWhere((t) => now.difference(t) > const Duration(seconds: 1));
+
+    // 3. Throttle state updates to ~15 FPS (66ms) to avoid lagging the UI
+    if (_lastUpdate == null || now.difference(_lastUpdate!) > const Duration(milliseconds: 66)) {
+      _updateState(now);
+      _lastUpdate = now;
+    }
   }
 
+  void _updateState(DateTime now) {
+    if (_startTime == null) return;
+    
+    final totalElapsed = now.difference(_startTime!);
+    if (totalElapsed.inMilliseconds <= 0) return;
 
-  /// Handle status updates
+    // Cumulative Average Speed
+    final averageSpeed = _tokensGenerated / totalElapsed.inMilliseconds * 1000;
+    
+    // Real-time Speed (based on the last 1 second window)
+    final windowDurationMs = _tokenWindow.isEmpty 
+        ? 0 
+        : now.difference(_tokenWindow.first).inMilliseconds;
+    
+    // Avoid division by zero and handle the initial ramp-up
+    final currentSpeed = windowDurationMs < 100 
+        ? averageSpeed // Fallback to average during the first 100ms
+        : (_tokenWindow.length / (windowDurationMs / 1000.0));
+    
+    double progress;
+    if (state.workload.isTimeBased) {
+      progress = totalElapsed.inMilliseconds / state.workload.minDuration.inMilliseconds;
+    } else {
+      progress = _tokensGenerated / state.workload.tokens;
+    }
+
+    state = state.copyWith(
+      generatedText: _generatedBuffer.toString(),
+      currentSpeed: currentSpeed,
+      averageSpeed: averageSpeed,
+      progress: progress.clamp(0.0, 1.0),
+    );
+    
+    _updateRamUsage();
+  }
+
+  void _updateRamUsage() {
+    final currentRam = _llamaService?.getRamUsage() ?? 0.0;
+    final peakRam = currentRam > state.ramPeakMB ? currentRam : state.ramPeakMB;
+    state = state.copyWith(
+      ramUsageMB: currentRam,
+      ramPeakMB: peakRam,
+    );
+  }
+
+  Future<String?> _ensureModelDownloaded(ModelStrategy strategy) async {
+    // Find model type from strategy (hacky but effective for now)
+    final ModelType? modelType = ModelType.values.any((m) => m.displayName == strategy.modelName) 
+        ? ModelType.values.firstWhere((m) => m.displayName == strategy.modelName)
+        : null;
+
+    if (modelType != null && _activeDownloads.containsKey(modelType)) {
+      return _activeDownloads[modelType];
+    }
+
+    final downloadFuture = _prepareModel(strategy);
+    
+    if (modelType != null) {
+      _activeDownloads[modelType] = downloadFuture;
+    }
+
+    try {
+      final result = await downloadFuture;
+      if (modelType != null) _activeDownloads.remove(modelType);
+      return result;
+    } catch (_) {
+      if (modelType != null) _activeDownloads.remove(modelType);
+      rethrow;
+    }
+  }
+
+  Future<String?> _prepareModel(ModelStrategy strategy) async {
+    try {
+      if (strategy is OnlineModelStrategy) {
+        state = state.copyWith(
+          status: BenchmarkStatus.downloading,
+          modelName: strategy.modelName,
+        );
+
+        final strategyWithProgress = OnlineModelStrategy(
+          downloadUrl: strategy.downloadUrl,
+          modelName: strategy.modelName,
+          sizeMB: strategy.expectedSizeMB,
+          onProgress: (progress) {
+            // Only update progress if we are still viewing/downloading THIS model
+            if (state.modelName == strategy.modelName) {
+              state = state.copyWith(progress: progress);
+            }
+          },
+        );
+
+        final path = await _modelManager.downloadModel(strategyWithProgress);
+        
+        // Update downloaded models list
+        final ModelType? modelType = ModelType.values.any((m) => m.displayName == strategy.modelName) 
+            ? ModelType.values.firstWhere((m) => m.displayName == strategy.modelName)
+            : null;
+            
+        if (modelType != null && !state.downloadedModels.contains(modelType)) {
+          state = state.copyWith(
+            downloadedModels: [...state.downloadedModels, modelType],
+          );
+        }
+
+        // If we are still looking at this model, set it to idle (ready)
+        if (state.modelName == strategy.modelName) {
+          state = state.copyWith(status: BenchmarkStatus.idle, progress: 1.0);
+        }
+        return path;
+      } else if (strategy is EmbeddedModelStrategy) {
+        return await _modelManager.extractEmbeddedModel(strategy);
+      } else {
+        return await strategy.getModelPath();
+      }
+    } catch (e) {
+      state = state.copyWith(
+        status: BenchmarkStatus.error,
+        errorMessage: 'Failed to prepare model: $e',
+      );
+      return null;
+    }
+  }
+
   void _onStatusUpdate(String status) {
     // Log status updates (could be displayed in UI)
     print('Benchmark status: $status');
@@ -255,17 +457,72 @@ class BenchmarkController extends _$BenchmarkController {
       timestamp: DateTime.now(),
       deviceModel: deviceModel,
       aiModelName: state.modelName ?? 'Unknown',
-      tokensPerSecond: state.currentSpeed,
-      ramUsageMB: state.ramUsageMB,
+      tokensPerSecond: state.averageSpeed,
+      ramUsageMB: state.ramPeakMB, // Save peak RAM
     );
 
     await _repository.saveBenchmark(result);
   }
 
-  /// Stop the benchmark
+  /// Toggle terminal visibility
+  void toggleTerminal() {
+    state = state.copyWith(showTerminal: !state.showTerminal);
+  }
+
+  /// Reset benchmark metrics and generated text
+  void resetBenchmark() {
+    state = state.copyWith(
+      status: BenchmarkStatus.idle,
+      currentSpeed: 0.0,
+      averageSpeed: 0.0,
+      generatedText: '',
+      progress: 0.0,
+      ramUsageMB: 0.0,
+      ramPeakMB: 0.0,
+      errorMessage: null,
+    );
+  }
+
+  // Stop the benchmark
   Future<void> stopBenchmark() async {
+    final isActive = state.status == BenchmarkStatus.running || 
+                     state.status == BenchmarkStatus.preparing ||
+                     state.status == BenchmarkStatus.loadingModel ||
+                     state.status == BenchmarkStatus.downloading;
+
+    // Set status immediately to avoid race conditions in the inference loop
+    state = state.copyWith(
+      status: isActive ? BenchmarkStatus.error : BenchmarkStatus.idle,
+      errorMessage: isActive ? 'STOPPED BY USER' : null,
+    );
+
+    // If we were already in completed state, also reset the values
+    if (!isActive && state.status == BenchmarkStatus.idle) {
+      resetBenchmark();
+    }
+
+    _modelManager.cancelActiveDownload();
+    _activeDownloads.clear();
+
     await _disposeService();
-    state = state.copyWith(status: BenchmarkStatus.idle);
+  }
+
+  Future<void> _initConnectivity() async {
+    // Check initial connectivity
+    final result = await Connectivity().checkConnectivity();
+    _updateConnectivity(result);
+
+    // Listen to changes
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) {
+      _updateConnectivity(result);
+    });
+  }
+
+  void _updateConnectivity(ConnectivityResult result) {
+    final bool isOffline = result == ConnectivityResult.none;
+    if (state.isOfflineMode != isOffline) {
+      state = state.copyWith(isOfflineMode: isOffline);
+    }
   }
 }
 
