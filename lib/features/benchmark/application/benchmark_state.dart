@@ -21,6 +21,7 @@ class BenchmarkState with _$BenchmarkState {
     @Default(BenchmarkWorkload.standard) BenchmarkWorkload workload,
     @Default([]) List<ModelType> downloadedModels,
     @Default(false) bool hasPartialDownload,
+    @Default('Unknown Device') String deviceName,
   }) = _BenchmarkState;
 }
 

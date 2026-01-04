@@ -39,6 +39,9 @@ class BenchmarkController extends _$BenchmarkController {
     // Initial check for downloaded models
     Future.microtask(() => _refreshDownloadedModels());
     
+    // Fetch device info
+    Future.microtask(() => _fetchDeviceInfo());
+    
     // Initialize connectivity monitoring
     _initConnectivity();
 
@@ -462,6 +465,28 @@ class BenchmarkController extends _$BenchmarkController {
     );
 
     await _repository.saveBenchmark(result);
+  }
+
+  Future<void> _fetchDeviceInfo() async {
+    final deviceInfo = DeviceInfoPlugin();
+    String name = 'Unknown Device';
+
+    try {
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        // e.g. "Google Pixel 7 Pro"
+        final manufacturer = androidInfo.manufacturer;
+        final model = androidInfo.model;
+        name = '$manufacturer $model'.toUpperCase();
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        name = iosInfo.name.toUpperCase();
+      }
+    } catch (e) {
+      name = 'Unknown Device';
+    }
+
+    state = state.copyWith(deviceName: name);
   }
 
   /// Toggle terminal visibility

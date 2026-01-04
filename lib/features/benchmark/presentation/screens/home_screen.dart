@@ -534,7 +534,7 @@ class HomeScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              'Hardware: Pixel 7 Pro\nModel: ${state.modelName}',
+              'Hardware: ${state.deviceName}\nModel: ${state.modelName}',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontFamily: 'RobotoMono',
