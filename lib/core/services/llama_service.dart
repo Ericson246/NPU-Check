@@ -55,6 +55,10 @@ class LlamaService {
         _statusController.add('Isolate ready');
       } else if (message is TokenEvent) {
         _tokenController.add(message);
+      } else if (message is List<TokenEvent>) {
+        for (final event in message) {
+          _tokenController.add(event);
+        }
       } else if (message is String) {
         _statusController.add(message);
       }
@@ -172,6 +176,16 @@ class LlamaService {
           }
         } else if (message is RunInferenceMessage) {
           mainSendPort.send('Starting inference...');
+          
+          // Start the batching timer
+          _batchTimer?.cancel();
+          _batchTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+            if (_tokenBatch.isNotEmpty) {
+              mainSendPort.send(List<TokenEvent>.of(_tokenBatch));
+              _tokenBatch.clear();
+            }
+          });
+
           final promptPtr = message.prompt.toNativeUtf8();
           final tokensGenerated = bindings.runInference(
             promptPtr.cast(),
@@ -179,6 +193,13 @@ class LlamaService {
           );
           malloc.free(promptPtr);
 
+          // Stop timer and send any remaining tokens
+          _batchTimer?.cancel();
+          if (_tokenBatch.isNotEmpty) {
+            mainSendPort.send(List<TokenEvent>.of(_tokenBatch));
+            _tokenBatch.clear();
+          }
+          
           // Get the generated text
           final textPtr = bindings.getGeneratedText();
           final generatedText = textPtr.cast<Utf8>().toDartString();
@@ -190,6 +211,7 @@ class LlamaService {
           mainSendPort.send('Inference complete: $tokensGenerated tokens');
           mainSendPort.send(TokenEvent(generatedText, DateTime.now().millisecondsSinceEpoch));
         } else if (message is DisposeMessage) {
+          _batchTimer?.cancel();
           bindings.disposeModel();
           mainSendPort.send('Model disposed');
           isolateReceivePort.close();
@@ -201,12 +223,14 @@ class LlamaService {
   }
 
   static SendPort? _isolateSendPort;
+  static final List<TokenEvent> _tokenBatch = [];
+  static Timer? _batchTimer;
 
   /// Native callback wrapper (must be top-level or static)
   static void _nativeTokenCallback(ffi.Pointer<ffi.Char> token, int timeMs) {
     if (_isolateSendPort != null) {
       final tokenStr = token.cast<Utf8>().toDartString();
-      _isolateSendPort!.send(TokenEvent(tokenStr, timeMs));
+      _tokenBatch.add(TokenEvent(tokenStr, timeMs));
     }
   }
 }
