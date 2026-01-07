@@ -1,5 +1,6 @@
 import 'dart:ffi' as ffi;
 import 'dart:io';
+import 'package:ffi/ffi.dart';
 
 /// FFI bindings for the native llama.cpp library
 class LlamaBindings {
@@ -65,28 +66,3 @@ typedef TokenCallbackNative = ffi.Void Function(
   ffi.Int64 timeMs,
 );
 
-// Helper class for UTF-8 string conversion
-class Utf8 extends ffi.Opaque {}
-
-extension Utf8Pointer on ffi.Pointer<Utf8> {
-  static ffi.Pointer<Utf8> fromString(String string) {
-    final units = string.codeUnits;
-    final ffi.Pointer<ffi.Uint8> result = ffi.malloc.allocate(units.length + 1);
-    final nativeString = result.asTypedList(units.length + 1);
-    nativeString.setAll(0, units);
-    nativeString[units.length] = 0;
-    return result.cast();
-  }
-
-  String toDartString() {
-    final buffer = <int>[];
-    var i = 0;
-    while (true) {
-      final char = (this.cast<ffi.Uint8>() + i).value;
-      if (char == 0) break;
-      buffer.add(char);
-      i++;
-    }
-    return String.fromCharCodes(buffer);
-  }
-}
