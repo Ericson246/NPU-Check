@@ -273,8 +273,9 @@ class BenchmarkController extends _$BenchmarkController {
   }
 
   /// Handle incoming tokens
-  void _onTokenReceived(TokenEvent event) {
+  void _onTokenReceived(List<TokenEvent> events) {
     if (state.status != BenchmarkStatus.running && state.status != BenchmarkStatus.preparing) return;
+    if (events.isEmpty) return;
 
     final now = DateTime.now();
 
@@ -296,14 +297,27 @@ class BenchmarkController extends _$BenchmarkController {
       }
     }
 
-    // 1. Buffer the token efficiently
-    _generatedBuffer.write(event.token);
-    _tokensGenerated++;
-    
-    _tokenWindow.add(now);
+    // 1. Buffer the tokens efficiently
+    for (final event in events) {
+      _generatedBuffer.write(event.token);
+      _tokenWindow.add(DateTime.fromMillisecondsSinceEpoch(event.timeMs));
+    }
+    _tokensGenerated += events.length;
 
     // 2. Remove tokens older than 1 second for the "real-time" speed window
-    _tokenWindow.removeWhere((t) => now.difference(t) > const Duration(seconds: 1));
+    // Optimization: Check only once per batch, and remove from start (sorted list)
+    final cutoff = now.subtract(const Duration(seconds: 1));
+    int removeCount = 0;
+    for (final t in _tokenWindow) {
+      if (t.isBefore(cutoff)) {
+        removeCount++;
+      } else {
+        break; // Sorted list, can stop early
+      }
+    }
+    if (removeCount > 0) {
+      _tokenWindow.removeRange(0, removeCount);
+    }
 
     // 3. Throttle state updates to ~15 FPS (66ms) to avoid lagging the UI
     if (_lastUpdate == null || now.difference(_lastUpdate!) > const Duration(milliseconds: 66)) {

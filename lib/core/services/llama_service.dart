@@ -35,10 +35,10 @@ class LlamaService {
   Isolate? _isolate;
   SendPort? _sendPort;
   final _receivePort = ReceivePort();
-  final _tokenController = StreamController<TokenEvent>.broadcast();
+  final _tokenController = StreamController<List<TokenEvent>>.broadcast();
   final _statusController = StreamController<String>.broadcast();
 
-  Stream<TokenEvent> get tokenStream => _tokenController.stream;
+  Stream<List<TokenEvent>> get tokenStream => _tokenController.stream;
   Stream<String> get statusStream => _statusController.stream;
 
   bool _isInitialized = false;
@@ -54,11 +54,9 @@ class LlamaService {
         _sendPort = message;
         _statusController.add('Isolate ready');
       } else if (message is TokenEvent) {
-        _tokenController.add(message);
+        _tokenController.add([message]);
       } else if (message is List<TokenEvent>) {
-        for (final event in message) {
-          _tokenController.add(event);
-        }
+        _tokenController.add(message);
       } else if (message is String) {
         _statusController.add(message);
       }
