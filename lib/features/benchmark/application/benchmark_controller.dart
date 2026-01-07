@@ -335,6 +335,11 @@ class BenchmarkController extends _$BenchmarkController {
     // Cumulative Average Speed
     final averageSpeed = _tokensGenerated / totalElapsed.inMilliseconds * 1000;
     
+    // Safety check: ensure window isn't insanely large (shouldn't happen with correct logic, but safe > sorry)
+    if (_tokenWindow.length > 5000) {
+      _tokenWindow.removeRange(0, _tokenWindow.length - 2000);
+    }
+    
     // Real-time Speed (based on the last 1 second window)
     final windowDurationMs = _tokenWindow.isEmpty 
         ? 0 
@@ -352,8 +357,15 @@ class BenchmarkController extends _$BenchmarkController {
       progress = _tokensGenerated / state.workload.tokens;
     }
 
+    // Optimization: Truncate text for UI to prevent rendering lag on long benchmarks
+    // We keep the full text in _generatedBuffer but only show the tail in the UI
+    final fullTextLength = _generatedBuffer.length;
+    final String uiText = fullTextLength > 1000 
+        ? '...${_generatedBuffer.toString().substring(fullTextLength - 1000)}'
+        : _generatedBuffer.toString();
+
     state = state.copyWith(
-      generatedText: _generatedBuffer.toString(),
+      generatedText: uiText,
       currentSpeed: currentSpeed,
       averageSpeed: averageSpeed,
       progress: progress.clamp(0.0, 1.0),
