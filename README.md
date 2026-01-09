@@ -124,15 +124,16 @@ cd npu-benchmark
 
 #### Step 2: Clone llama.cpp Library
 ```bash
-cd android/app/src/main/cpp/
-git clone https://github.com/ggerganov/llama.cpp.git
-cd ../../../../..
+git submodule update --init --recursive
 ```
 
-#### Step 3: Add Bundled Model
-Place the TinyStories model in the assets folder:
-- Download: `tinystories-3m-q2_k.gguf` (7.7 MB)
-- Location: `assets/models/tinystories-3m-q2_k.gguf`
+#### Step 3: Add KEY Bundled Android
+Place the upload-keystore.jks and key.properties in the andorid folder:
+- Download: `upload-keystore.jks`
+- Location: `android/app`
+
+- Download: `key.properties`
+- Location: `android`
 
 #### Step 4: Install Dependencies
 ```bash
